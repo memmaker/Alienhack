@@ -86,3 +86,13 @@
 - Screen is one 80x40 grid; splitting into WM windows is stage 5.
 - Stage 3: no mouse yet (page is a `<pre>`; add click → cursor/choose with the stage-5 page).
   Mac pane check of menus + keypad still to do.
+
+### Stage 4 — Tiles (done, cloud run): **text only**
+- Game ships no graphics (no image files in the tree; pure Win32-console ASCII, no tile
+  support in RL-Shared). Theme is sci-fi (Aliens: marines, xenomorphs, facehuggers, pulse
+  rifles, motion tracker, colony/ship terrain). Part 2 forbids a fantasy fallback set
+  (DawnLike/Oryx/NetHack/Shockbolt), and no licensed sci-fi set covers ~95% of AlienHack's
+  aliens/weapons/terrain in one sheet (mixing sets not allowed). Decision: text only, like
+  ZAPM. No Tiles button; stage 5 builds the page without a tile switch.
+- Text mode may use a period font (Oldschool PC Font Resource, CC BY-SA 4.0, credit) — stage 5.
+- Open: no deploy in this cloud run.
