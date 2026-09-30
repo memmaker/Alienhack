@@ -1,3 +1,20 @@
+# AlienHack in the browser (RVIP port)
+
+This is a browser port of **AlienHack 0.9.1 beta** by Sock Puppet, a tactical roguelike loosely
+based on AliensRL. Upstream: [SockPuppet8/Alienhack @ b843d42](https://github.com/SockPuppet8/Alienhack/tree/b843d42)
+(dependency [SockPuppet8/RL-Shared @ c42d388](https://github.com/SockPuppet8/RL-Shared/tree/c42d3889d58672a5198ee2066c5cb1af509889f1), cloned and patched by `web/build.sh`).
+All changes: [compare b843d42...main](https://github.com/memmaker/Alienhack/compare/b843d42...main).
+
+Play: https://ruzzoli.de/roguelikes/alienhack/
+
+Added for the web: Emscripten build (`web/build.sh`, `web/Console-web.cpp` replaces the Win32 console),
+auto-explore (`H`), walk-to-stairs (`>`/`<`), Enter command menu and item menus, windowed page with
+fonts, IndexedDB saves with export/import, help page, synthesized sound effects. Text only (no tiles).
+
+Build: `source emsdk_env.sh; sh web/build.sh` → `web/dist/`.
+
+---
+
 ## FAO Windows 10 users
 
 There is a problem whereby the application window doesn't resize itself correctly at startup. 

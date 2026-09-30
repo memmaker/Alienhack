@@ -77,6 +77,11 @@ climb. Info terminals (<kbd>Space</kbd> next to one) map the whole floor.</li>
 <li>Don't shoot from too far away; avoid single shots at small or fast aliens. Take ammo from weapons you find.</li>
 </ul>
 
+<h2>About this version</h2>
+<p>Based on AlienHack 0.9.1 beta, <a href="https://github.com/SockPuppet8/Alienhack/tree/b843d42">SockPuppet8/Alienhack @ b843d42</a>
+(with <a href="https://github.com/SockPuppet8/RL-Shared/tree/c42d3889d58672a5198ee2066c5cb1af509889f1">SockPuppet8/RL-Shared @ c42d388</a>).
+Browser port: <a href="https://github.com/memmaker/Alienhack">memmaker/Alienhack</a>.</p>
+
 <h2>Playing in the browser</h2>
 <ul>
 <li><b>Help</b> opens this guide (<kbd>Esc</kbd> closes it; the game gets no keys while it is open).</li>

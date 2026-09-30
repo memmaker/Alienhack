@@ -130,6 +130,19 @@
 - Open: no deploy; Mac pane look + listening check of the synthesized sounds (volume/taste); `alert`
   (alien seen) and `hiss` (alien noise nearby) may be too frequent in play — tune after listening.
 
+
+### Stage 7 — Publish (done, cloud run; not deployed)
+- Version line: "Based on AlienHack 0.9.1 beta · SockPuppet8/Alienhack @ b843d42" (card, Help "About this
+  version" in make-help.py, README top). RL-Shared @ c42d388 named in Help + README.
+- Year 2018 (first public release, roguetemple topic 5669 / GitHub initial commit 2018-10-19); AliensRL 2007
+  (Kornel Kisielewicz, 7DRL). Tree: new top-level `<li class="insp">` AliensRL (span, not web-published) with
+  AlienHack as `<li class="insp">` child (own C++ code, "loosely based on AliensRL" per ah_readme).
+- roguelikes (branch claude/dazzling-brahmagupta-nqq41h): card (no Info button, no shrine yet), tree,
+  `img/alienhack.png` (Playwright shot after explore, crop 384x160 of map), years.json `alienhack` + `aliensrl`,
+  "47 classic roguelikes"; `order.py` OK. og block written into `web/index.html` (og.py's game loop, inline).
+- Open (Mac): merge both branches to main; game repo split per 5.15 (`rvip`-free already, but README compare
+  link says `main`); add `web/deploy.sh` with guard; build + `deploy.sh` both repos; run og.py for the index
+  og image; check `curl -s https://ruzzoli.de/roguelikes/alienhack/ | grep og:image`; Mac pane check.
 ### Open
 - No deploy (cloud run). Mac check in the browser pane still to do (stage 1 + 2: watch explore painting).
 - Explore key interrupt not tested headless (Asyncify timing); explore not run on deep/dark floors.
