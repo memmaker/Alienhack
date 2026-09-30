@@ -66,7 +66,9 @@ S = {
     'stairs': cat(*[mix(noise(0.07, 0.2, 3, 0.6), gap(0.07)) + gap(0.06) for _ in range(4)]),
 }
 for k, s in S.items():
-    m = max(1e-9, max(abs(x) for x in s)); g = 0.7 / m if m > 0.7 else 1
+    # equal loudness: RMS -18 dBFS, peak capped at -3 dBFS
+    m = max(1e-9, max(abs(x) for x in s)); r = max(1e-9, (sum(x * x for x in s) / len(s)) ** 0.5)
+    g = min(0.126 / r, 0.7 / m)
     with wave.open(os.path.join(out, k + '.wav'), 'wb') as w:
         w.setnchannels(1); w.setsampwidth(2); w.setframerate(R)
         w.writeframes(b''.join(struct.pack('<h', int(max(-1, min(1, x * g)) * 32767)) for x in s))
