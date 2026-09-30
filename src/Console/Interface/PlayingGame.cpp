@@ -1,4 +1,5 @@
 #include "PlayingGame.hpp"
+void rvip_report_run(const char* ev);   // PlayerCharacter.cpp (RVIP stage 9 beacon)
 #include "RvipSound.hpp"
 #include "story.hpp"
 #include "draw.hpp"
@@ -1643,6 +1644,7 @@ void PlayingGame::notifyAHGameModelAdvance( RL_shared::AGameModel& in_model, RL_
 				m_msgs.addString("You are dead. Press any key to continue.");
 
 				writeMortem(in_model);
+				rvip_report_run("death");
 			}
 			return;
 		}
@@ -1660,6 +1662,7 @@ void PlayingGame::notifyAHGameModelAdvance( RL_shared::AGameModel& in_model, RL_
 			}
 
 			writeMortem(in_model);
+			rvip_report_run("death");
 
 			return;
 		}
@@ -1717,6 +1720,7 @@ void PlayingGame::notifyAHGameModelAdvance( RL_shared::AGameModel& in_model, RL_
 				}
 
 				writeMortem(in_model);
+				rvip_report_run(m_good_ending ? "win" : "death");   // bad ending = died in the reactor blast
 
 				m_shown_ending_text_1 = true;
 

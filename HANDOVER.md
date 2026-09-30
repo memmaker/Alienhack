@@ -169,3 +169,27 @@
 - Links: card Info button, tree ✦, game page `#bar h1` link (web/index.html).
 - Open: deploy both repos + check the three links live; 375 px scrollWidth check; screenshots; AliensRL
   history (Kornel Kisielewicz, ChaosForge) could get more trivia.
+
+### Stage 9 — Graveyard / beacon (done, cloud run; not deployed)
+- Hook = the three places the game writes the mortem (`PlayingGame::notifyAHGameModelAdvance`):
+  death (first "You are dead" frame, before the key wait), world explosion (death, no killer),
+  escape (`m_good_ending` → `ev=win`, the bad ending "Escaped, but obliterated in the reactor
+  explosion" → `ev=death`). `rvip_report_run(ev)` + `EM_JS rvip_beacon` in `PlayerCharacter.cpp`
+  (values captured in `writeOutcome`, killer set in `takeDamage`/`huggerAttack` from
+  `Alien::getSelectName(false)`; reset after each report). Via `RvipWM.report`, fetch fallback.
+- Fields: `g=alienhack`, `ev`, `name` (NameEntry name), `killer` (alien type, deaths by an alien
+  only; acid/fire/explosion/"dying blow" omit it), `depth` (`OverWorld::level` of the floor the
+  run ended on; 0 on the ground-floor starting levels). Not sent: `score` (the game has no
+  score/high-score list), `turns` (real-time game clock, no turn counter), `lvl` (no char level).
+  No quit: the only way out is Save (save-and-quit sends nothing).
+- Killer art: `roguelikes/killers/make.py alienhack()` → 15 PNGs (glyph + colour from `draw.cpp`,
+  palette RVIP_CSS). Generated in the cloud with DejaVu Sans Mono Bold (Menlo missing): rerun
+  `python3 make.py alienhack` on the Mac for Menlo.
+- Tested (headless Playwright, `/roguelikes/beacon` routed, temp name-keyed patch `die*`/`win*`
+  reverted): 503 → one URL with id/at in the IndexedDB outbox; `RvipWM.flush()` with 204 → sent,
+  outbox empty. death: `ev=death&name=dieTester&killer=Death%20Spitter&depth=0`; win:
+  `ev=win&name=winner%20x&depth=0`.
+- Open: deploy both repos; real death in the user's browser → graveyard.html; Mac killer-art rerun.
+
+**RVIP complete** (stages 1–9) except: deploys (stages 5–9) and the Mac checks (pane look,
+375 px, screenshots, Menlo killer art).

@@ -14,6 +14,31 @@
 #include "assert.hpp"
 #include <boost/foreach.hpp>
 
+// RVIP stage 9 (beacon): values of the finished run, set by takeDamage/huggerAttack/writeOutcome.
+static std::string rvip_killer, rvip_name;
+static int rvip_depth = -1;
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+EM_JS(void, rvip_beacon, (const char* ev, const char* name, const char* killer, int depth), {
+  try {
+    var e = encodeURIComponent, q = "g=alienhack&ev=" + e(UTF8ToString(ev));
+    var n = UTF8ToString(name), k = UTF8ToString(killer);
+    if (n) q += "&name=" + e(n);
+    if (k) q += "&killer=" + e(k);
+    if (depth >= 0) q += "&depth=" + depth;
+    if (window.RvipWM && RvipWM.report) RvipWM.report(q);
+    else fetch("/roguelikes/beacon?" + q, { keepalive: true, mode: "no-cors" }).catch(function () {});
+  } catch (x) {}
+});
+#endif
+void rvip_report_run(const char* ev)
+{
+#ifdef __EMSCRIPTEN__
+	rvip_beacon(ev, rvip_name.c_str(), std::string("death") == ev ? rvip_killer.c_str() : "", rvip_depth);
+#endif
+	rvip_killer.clear(); rvip_name.clear(); rvip_depth = -1;
+}
+
 
 
 namespace AlienHack
@@ -437,6 +462,7 @@ int PlayerCharacter::takeDamage( AHGameModel& model, DBKeyValue attacker_key, da
 	//TODO: move this stuff somewhere else and improve it.
 	if (m_HP <= 0)
 	{
+		rvip_killer.clear();
 		if (damage::Acid == type)
 			writeOutcome(model, "Killed by acid");
 		else if (damage::Fire == type)
@@ -479,11 +505,13 @@ int PlayerCharacter::takeDamage( AHGameModel& model, DBKeyValue attacker_key, da
 						death_str += alien.getSelectName(false);
 						death_str += " and dragged away to the alien hive";
 					}
+					rvip_killer = alien.getSelectName(false);
 				}
 				else 
 				{
 					death_str = "Killed by a ";
 					death_str += attacker.getSelectName(false);
+					rvip_killer = attacker.getSelectName(false);
 				}
 			}
 
@@ -981,6 +1009,7 @@ void PlayerCharacter::huggerAttack( AHGameModel& model, Alien& attacker )
 		if (events)
 			events->playerHuggered(model, *this);
 
+		rvip_killer = attacker.getSelectName(false);
 		writeOutcome(model, "Implanted by an alien parasite");
 	}
 	else
@@ -1389,6 +1418,16 @@ void PlayerCharacter::writeOutcome( AHGameModel& model, const char * outcome )
 			m_stats->sidearm() = "None";
 
 		m_stats->perks() = m_perks;
+
+		// RVIP stage 9: remember the run's end values for the beacon (rvip_report_run)
+		rvip_name = m_name;
+		rvip_depth = -1;
+		if (RL_shared::WorldObject::WorldLocation::INVALID_ZONE != location().zone)
+		{
+			OverWorld::BlockAndFloor bnf = model.overworld().getBlockAndFloor(location().zone);
+			if (bnf.block >= 0)
+				rvip_depth = model.overworld().level(bnf.block, bnf.floor);
+		}
 
 		m_stats->XP() = m_XP;
 		m_stats->spentXP() = m_spent_XP;
