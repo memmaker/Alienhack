@@ -70,8 +70,8 @@ climb. Info terminals (<kbd>Space</kbd> next to one) map the whole floor.</li>
 
 <h2>Tips</h2>
 <ul>
-<li>Don't let aliens get close: most kill at close range. Doors buy time, but aliens can ram them.</li>
-<li>Guns make noise, explosions more. Vents let aliens appear where you don't expect them.</li>
+<li>Don't let aliens get close: they are "deadly at close range" (ah_readme). Doors buy time, but aliens can ram them (the game's <code>BreakDoorAction</code>: "doorRammed").</li>
+<li>Guns make noise, explosions more (ah_readme advice 8, 9). Aliens use ventilation shafts: "An alien crawls out of a ventilation shaft!" (game message).</li>
 <li>Stun grenades are safest dropped at your feet when something is too close; never throw a grenade at a wall.</li>
 <li>Too much acid on your armour: take it off. Medkits take a long time and lower your maximum HP when hurt.</li>
 <li>Don't shoot from too far away; avoid single shots at small or fast aliens. Take ammo from weapons you find.</li>
