@@ -1,0 +1,90 @@
+diff --git a/Algorithm/Algorithms-2D.hpp b/Algorithm/Algorithms-2D.hpp
+index 6a44361..5c9c4d2 100644
+--- a/Algorithm/Algorithms-2D.hpp
++++ b/Algorithm/Algorithms-2D.hpp
+@@ -50,6 +50,9 @@ void lineCast(
+ 	ISampleCellFunctor& sample_cell_functor, 
+ 	VisitCellFunctor& visit_cell_functor
+ 	);
++inline void lineCast(int x0, int y0, int x1, int y1, ISampleCellFunctor& s, VisitCellFunctor&& v) { lineCast(x0, y0, x1, y1, s, v); }
++inline void lineCast(int x0, int y0, int x1, int y1, ISampleCellFunctor&& s, VisitCellFunctor& v) { lineCast(x0, y0, x1, y1, s, v); }
++inline void lineCast(int x0, int y0, int x1, int y1, ISampleCellFunctor&& s, VisitCellFunctor&& v) { lineCast(x0, y0, x1, y1, s, v); }
+ 
+ 
+ 
+diff --git a/ConsoleView/ConsoleView.cpp b/ConsoleView/ConsoleView.cpp
+index 68b8a23..fadfb33 100644
+--- a/ConsoleView/ConsoleView.cpp
++++ b/ConsoleView/ConsoleView.cpp
+@@ -15,7 +15,7 @@ namespace RL_shared
+ 
+ 
+ 
+-const std::clock_t FRAME_TIME = (std::max)((std::clock_t)1, CLOCKS_PER_SEC/50);
++const std::clock_t FRAME_TIME = (std::max)((std::clock_t)1, (std::clock_t)(CLOCKS_PER_SEC/50));
+ 
+ 
+ 
+diff --git a/Game/GameObject.hpp b/Game/GameObject.hpp
+index b4fe13c..f48bd5a 100644
+--- a/Game/GameObject.hpp
++++ b/Game/GameObject.hpp
+@@ -10,6 +10,7 @@ namespace RL_shared
+ {
+ 
+ class Zone;
++class World;
+ class GameModel;
+ 
+ 
+diff --git a/World-2DTiles/World.hpp b/World-2DTiles/World.hpp
+index c97e1d7..5568a10 100644
+--- a/World-2DTiles/World.hpp
++++ b/World-2DTiles/World.hpp
+@@ -31,7 +31,7 @@ public:
+ 	class NoObjectWithKey : std::exception
+ 	{
+ 	public: 
+-		NoObjectWithKey(DBKeyValue key) : std::exception( (std::string("No object with key ") + key.asString()).c_str() ) {
++		NoObjectWithKey(DBKeyValue key) : std::exception() {
+ 		}
+ 	};
+ 
+diff --git a/World-2DTiles/Zone.cpp b/World-2DTiles/Zone.cpp
+index c9a1f15..356ec44 100644
+--- a/World-2DTiles/Zone.cpp
++++ b/World-2DTiles/Zone.cpp
+@@ -71,16 +71,16 @@ void Zone::recordTerrain(int x, int z)
+ 	if (!within(x,z))
+ 		return;
+ 
+-	Location& at( at(x,z) );
+-	at.recorded_terrain = at.terrain;
++	Location& loc_( at(x,z) );
++	loc_.recorded_terrain = loc_.terrain;
+ }
+ void Zone::recordTerrain(int x, int z, TerrainType value)
+ {
+ 	if (!within(x,z))
+ 		return;
+ 
+-	Location& at( at(x,z) );
+-	at.recorded_terrain = value;
++	Location& loc_( at(x,z) );
++	loc_.recorded_terrain = value;
+ }
+ void Zone::recordObject(WorldObjectType type, int x, int z)
+ {
+diff --git a/WorldObjects/WorldObject.hpp b/WorldObjects/WorldObject.hpp
+index 754df76..795cb01 100644
+--- a/WorldObjects/WorldObject.hpp
++++ b/WorldObjects/WorldObject.hpp
+@@ -57,7 +57,7 @@ public:
+ 		}
+ 	};
+ 	WorldLocation location(void) const			{ return m_loc; }
+-	void setLocation(WorldLocation& new_loc)	{ m_loc = new_loc; }
++	void setLocation(const WorldLocation& new_loc)	{ m_loc = new_loc; }
+ 
+ 	//Uses virtual dispatch. Do not call from constructor.
+ 	bool moveTo(IGameModel&, WorldLocation new_loc, bool instant);

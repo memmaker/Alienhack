@@ -1,0 +1,27 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AlienHack</title>
+<style>
+body{background:#000;color:#ccc;margin:0;padding:8px}
+#screen{font:14px/1.15 monospace;margin:0;white-space:pre}
+</style></head><body>
+<pre id="screen">Loading…</pre>
+<script>
+// Stage-1 page: shows the game's 80x40 console grid as HTML text. Windows come in stage 5.
+var PAL=['#000','#a00','#0a0','#00a','#a50','#0aa','#a0a','#aaa','#f55','#5f5','#55f','#ff5','#5ff','#f5f','#fff'];
+function esc(c){return c=='&'?'&amp;':c=='<'?'&lt;':c=='>'?'&gt;':c;}
+var Module={rvipKeys:[],
+ rvipScreen:function(ch,fg,bg,w,h){var out=[];for(var y=0;y<h;y++){var line='',cur=null,run='';
+  for(var x=0;x<w;x++){var i=y*w+x,c=ch[i]?String.fromCharCode(ch[i]):' ',f=fg[i]<0?7:fg[i],b=bg[i]<0?0:bg[i],k=f+','+b;
+   if(k!==cur){if(cur!==null)line+=run+'</span>';var p=cur=k;line+='<span style="color:'+PAL[f]+(b?';background:'+PAL[b]:'')+'">';run='';}
+   run+=esc(c);}
+  line+=run+'</span>';out.push(line);}
+  document.getElementById('screen').innerHTML=out.join('\n');}};
+var KEYS={ArrowUp:0x148,ArrowDown:0x150,ArrowLeft:0x14b,ArrowRight:0x14d,Home:0x147,PageUp:0x149,End:0x14f,PageDown:0x151,
+ Enter:13,Escape:27,Backspace:8,Tab:9};
+document.addEventListener('keydown',function(e){var k=KEYS[e.key];
+ if(k===undefined&&e.key.length===1&&!e.ctrlKey&&!e.metaKey)k=e.key.charCodeAt(0)&0xff;
+ if(k===undefined)return;e.preventDefault();Module.rvipKeys.push(k);});
+</script>
+<script src="alienhack.js"></script>
+</body></html>
