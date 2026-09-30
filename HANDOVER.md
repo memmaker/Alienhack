@@ -176,6 +176,13 @@
   (DawnLike/Oryx/NetHack/Shockbolt), and no licensed sci-fi set covers ~95% of AlienHack's
   aliens/weapons/terrain in one sheet (mixing sets not allowed). Decision: text only, like
   ZAPM. No Tiles button; stage 5 builds the page without a tile switch.
+- Tile search (2026-09-30, agent's decision, not the user's), candidates:
+  - OGA "Sci-Fi RogueLike Pixel Art" (CC0/OGA-BY 3.0, 16x16): few aliens/robots/guns, no armours/pickups set; ~35%.
+  - OGA Redshrike "Basic 32x32 sci-fi tiles" + sci-fi enemies (CC-BY/OGA-BY 3.0): terrain + a few enemies only; ~30%.
+  - OGA "Top sci-fi CGA tileset": 7 robots/characters, doors, lasers; ~20%.
+  - itch.io MOMONGA "Sci-Fi Dungeon Crawler Roguelike Tileset": page 403, licence unclear (not CC); not usable.
+  - Kenney Sci-fi RTS / Roguelike Characters (CC0): RTS units or fantasy modular people; ~10%.
+  None near 95%, mixing forbidden: text only stays.
 - Text mode may use a period font (Oldschool PC Font Resource, CC BY-SA 4.0, credit) — stage 5.
 - Open: no deploy in this cloud run.
 
