@@ -32,8 +32,8 @@ kbd{background:#22222a;border:1px solid var(--line);border-radius:3px;padding:0 
 .win>.body{flex:1;min-height:0;position:relative}
 .txt{margin:0;padding:3px 6px;font-family:var(--face,ui-monospace,Menlo,monospace);font-size:13px;line-height:1.25;white-space:pre;color:#aaa}
 #t-map .body,#t-screen .body{overflow:hidden}
-#map,#screen{display:block;image-rendering:pixelated}
-#t-screen .body{display:flex;align-items:center;justify-content:center}
+#map{display:block;image-rendering:pixelated}
+#screen{padding:0;background:#000}
 #msg{font-family:var(--face,ui-monospace,Menlo,monospace);color:#55ff55}
 #msg>div{white-space:pre-wrap}
 #vis{font-family:var(--face,ui-monospace,Menlo,monospace)}
@@ -74,7 +74,7 @@ kbd{background:#22222a;border:1px solid var(--line);border-radius:3px;padding:0 
   <div class="win" id="t-inv"><div class="t"><span class="name">Inventory</span></div><pre class="body txt" id="inv"></pre></div>
   <div class="win" id="t-vis"><div class="t"><span class="name">Visible</span></div><div class="body wm-list" id="vis"></div></div>
   <div class="win" id="t-msg"><div class="t"><span class="name">Messages</span></div><div class="body wm-list" id="msg"></div></div>
-  <div class="win" id="t-screen"><div class="t"><span class="name">Screen</span></div><div class="body"><canvas id="screen"></canvas></div></div>
+  <div class="win" id="t-screen"><div class="t"><span class="name">Screen</span></div><pre class="body txt" id="screen"></pre></div>
 </div>
 <div id="status" hidden></div>
 <div id="help" hidden><button id="help-close">Close</button><div id="help-body" tabindex="-1"></div></div>
@@ -184,14 +184,12 @@ function drawMap() {
   drawGrid(cv, map, c);
   RvipWM.center(cv, cv.width / 2, cv.height / 2, cv.width, cv.height);   /* the game keeps the player in the middle */
 }
-/* one-window mode: the game's whole 80x40 screen, scaled to the window keeping its aspect */
-var scr = null;
+/* one-window mode: the game's whole 80x40 screen as text, font sized to fit the window */
 function drawScreen() {
-  if (!scr || !wm || !wm.shown('screen')) return;
-  var b = $('t-screen').querySelector('.body'), best = 6;
-  for (var p = 6; p <= 48; p++) { var c = cellFor(p); c.font = mapFont(p); if (c.w * scr.w <= b.clientWidth && c.h * scr.h <= b.clientHeight) best = p; else break; }
-  var cell = cellFor(best); cell.font = mapFont(best);
-  drawGrid($('screen'), scr, cell);
+  if (!wm || !wm.shown('screen')) return;
+  var b = $('screen'), best = 6;
+  for (var p = 6; p <= 48; p++) { var c = cellFor(p); if (c.w * 80 <= b.clientWidth && c.h * 40 <= b.clientHeight) best = p; else break; }
+  b.style.fontFamily = mapFont(best).replace(/^\d+px /, ''); b.style.fontSize = best + 'px'; b.style.lineHeight = cellFor(best).h + 'px';
 }
 
 /* ---- the game's hooks ---- */
@@ -200,7 +198,6 @@ var Module = {
   /* sound: the game names an action's sound (RVIP_SOUND); played only when Audio > Sound effects is on */
   rvipSound: function (n) { if (L.sfx) RVIPSound.play([n], 0.6); },
   rvipKeys: [],
-  rvipScreen: function (ch, fg, bg, w, h) { scr = { ch: ch.slice(), fg: fg.slice(), bg: bg.slice(), w: w, h: h }; drawScreen(); },
   rvipMap: function (ch, fg, bg, w, h) { map = { ch: ch, fg: fg, bg: bg, w: w, h: h }; drawMap(); },
   rvipPanes: function (status, info, popup, cmd, based) {
     atCmd = cmd;

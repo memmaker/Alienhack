@@ -6,9 +6,6 @@
 #include <string.h>
 #include <string>
 
-EM_JS(void, web_update_screen, (const unsigned char* chars, const signed char* fg, const signed char* bg, int w, int h), {
-  if (Module.rvipScreen) Module.rvipScreen(HEAPU8.subarray(chars, chars + w*h), HEAP8.subarray(fg, fg + w*h), HEAP8.subarray(bg, bg + w*h), w, h);
-});
 EM_JS(int, web_poll_key, (void), {
   if (Module.rvipPoll) Module.rvipPoll();
   var q = Module.rvipKeys; return (q && q.length) ? q.shift() : -1;
@@ -127,7 +124,18 @@ void Console::drawText(int nX, int nY, const char* text, Colour fore, Colour bac
 void Console::updateScreen(void)
 {
 	ConsoleData& d( *m_data );
-	web_update_screen(d.ch, d.fg, d.bg, CONSOLE_SIZE_X, CONSOLE_SIZE_Y);	// one-window mode: the whole screen
+	{	// one-window mode: the whole screen as text rows (all 40 kept in place, trailing blanks trimmed)
+		static std::string last("\x02");
+		std::string scr, pend;
+		for (int y = 0; y < CONSOLE_SIZE_Y; ++y)
+		{
+			std::string l( rvipLine(d, y, 0, CONSOLE_SIZE_X-1, rvipAny) );
+			if (l.empty()) { pend += '\n'; continue; }
+			scr += pend + l + '\n'; pend.clear();
+		}
+		if (!scr.empty()) scr.erase(scr.length()-1);
+		if (scr != last) { last = scr; rvip_pane("screen", scr.c_str()); }
+	}
 	std::string status, info, popup;
 	bool over = false;
 	int bx0 = CONSOLE_SIZE_X, by0 = CONSOLE_SIZE_Y, bx1 = -1, by1 = -1;
