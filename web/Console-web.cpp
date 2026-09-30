@@ -59,10 +59,12 @@ const int CONSOLE_SIZE_Y = 40;
 
 struct Console::ConsoleData
 {
-	unsigned char ch[CONSOLE_SIZE_Y*CONSOLE_SIZE_X];
-	signed char fg[CONSOLE_SIZE_Y*CONSOLE_SIZE_X];
-	signed char bg[CONSOLE_SIZE_Y*CONSOLE_SIZE_X];
-	unsigned char mk[CONSOLE_SIZE_Y*CONSOLE_SIZE_X];	// 0 untouched, 1 main screen, 2 drawn over it
+	// two layers: [0] the main screen, [1] cells drawn over it (pop-ups). A pop-up never
+	// overwrites the main screen, so the windows under it keep their cells.
+	unsigned char ch[2][CONSOLE_SIZE_Y*CONSOLE_SIZE_X];
+	signed char fg[2][CONSOLE_SIZE_Y*CONSOLE_SIZE_X];
+	signed char bg[2][CONSOLE_SIZE_Y*CONSOLE_SIZE_X];
+	unsigned char mk[CONSOLE_SIZE_Y*CONSOLE_SIZE_X];	// bit 1 main screen drawn, bit 2 drawn over it
 	bool based;
 	void clear() { memset(ch, 0, sizeof ch); memset(fg, 0, sizeof fg); memset(bg, 0, sizeof bg); memset(mk, 0, sizeof mk); based = false; rvip_main_screen = false; }
 };
@@ -79,14 +81,15 @@ void Console::draw(int nX, int nY, char chr, Colour fore, Colour back)
 {
 	if ((nX < 0) || (nX >= CONSOLE_SIZE_X) || (nY < 0) || (nY >= CONSOLE_SIZE_Y)) return;
 	int i = nY*CONSOLE_SIZE_X + nX;
-	m_data->ch[i] = (unsigned char)chr;
-	m_data->fg[i] = (signed char)fore;
-	m_data->bg[i] = (signed char)back;
-	m_data->mk[i] = rvip_base > 0 ? 1 : 2;
+	int l = rvip_base > 0 ? 0 : 1;
+	m_data->ch[l][i] = (unsigned char)chr;
+	m_data->fg[l][i] = (signed char)fore;
+	m_data->bg[l][i] = (signed char)back;
+	m_data->mk[i] |= 1 << l;
 	if (rvip_base > 0) m_data->based = true;
 }
 
-// One text line of cells [x0, x1] in row y whose mark passes keep(); trailing blanks trimmed.
+// One text line of cells [x0, x1] in row y from the layer keep(mark) picks (-1 = none); trailing blanks trimmed.
 template< class D, class Keep >
 static std::string rvipLine( const D& d, int y, int x0, int x1, Keep keep )
 {
@@ -95,12 +98,13 @@ static std::string rvipLine( const D& d, int y, int x0, int x1, Keep keep )
 	for (int x = x0; x <= x1; ++x)
 	{
 		int i = y*CONSOLE_SIZE_X + x;
-		bool on = keep(d.mk[i]) && d.ch[i] && (d.ch[i] != ' ' || (d.bg[i] > 0));
+		int l = keep(d.mk[i]);
+		bool on = l >= 0 && d.ch[l][i] && (d.ch[l][i] != ' ' || (d.bg[l][i] > 0));
 		if (!on) { pend += ' '; continue; }
 		out += pend; pend.clear();
-		int f = d.fg[i] < 0 ? 7 : d.fg[i], b = d.bg[i] < 0 ? 0 : d.bg[i];
+		int f = d.fg[l][i] < 0 ? 7 : d.fg[l][i], b = d.bg[l][i] < 0 ? 0 : d.bg[l][i];
 		if (f != cf || b != cb) { out += '\x01'; out += (char)('a' + f); out += (char)('a' + b); cf = f; cb = b; }
-		unsigned char c = d.ch[i];
+		unsigned char c = d.ch[l][i];
 		out += (c < 32 || c > 126) ? '#' : (char)c;
 	}
 	return out;
@@ -118,9 +122,9 @@ static std::string rvipBlock( const D& d, int x0, int y0, int x1, int y1, Keep k
 	}
 	return out;
 }
-static bool rvipAny( unsigned char ) { return true; }
-static bool rvipMain( unsigned char m ) { return m == 1; }
-static bool rvipOver( unsigned char m ) { return m == 2; }
+static int rvipAny( unsigned char m ) { return (m & 2) ? 1 : (m & 1) ? 0 : -1; }
+static int rvipMain( unsigned char m ) { return (m & 1) ? 0 : -1; }
+static int rvipOver( unsigned char m ) { return (m & 2) ? 1 : -1; }
 void Console::drawText(int nX, int nY, const char* text, Colour fore, Colour back)
 {
 	for (; *text; ++nX, ++text) draw(nX, nY, *text, fore, back);
@@ -147,7 +151,7 @@ void Console::updateScreen(void)
 		for (int x = 0; x < CONSOLE_SIZE_X; ++x)
 		{
 			int i = y*CONSOLE_SIZE_X + x;
-			bool in = d.based ? (d.mk[i] == 2) : (d.ch[i] && d.ch[i] != ' ');
+			bool in = d.based ? (d.mk[i] & 2) : (d.ch[1][i] && d.ch[1][i] != ' ');
 			if (!in) continue;
 			over = true;
 			if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
@@ -165,8 +169,8 @@ void Console::updateScreen(void)
 			for (int x = MX0; x <= MX1; ++x, ++n)
 			{
 				int i = y*CONSOLE_SIZE_X + x;
-				bool on = d.mk[i] == 1;
-				mc[n] = on ? d.ch[i] : 0; mf[n] = on ? d.fg[i] : 0; mb[n] = on ? d.bg[i] : 0;
+				bool on = d.mk[i] & 1;
+				mc[n] = on ? d.ch[0][i] : 0; mf[n] = on ? d.fg[0][i] : 0; mb[n] = on ? d.bg[0][i] : 0;
 			}
 		web_map(mc, mf, mb, MX1-MX0+1, MY1-MY0+1);
 		status = AlienHack::rvip_zone_name + "\n" + rvipBlock(d, 45, 1, 77, 19, rvipMain);
