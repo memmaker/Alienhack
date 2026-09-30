@@ -23,7 +23,38 @@
   screen, get. ASan build ran the same game start + save (S): no reports. ASan objs removed.
   No `signature mismatch`/`conflicting signatures` (build has no `-w`).
 
+### Stage 2 — Explore + stairs + no --More-- (done, cloud run)
+- **Explore key `H`** (`Explore H` added to `keys.txt`; the only keyset; free). In-game help
+  (`?`) row "Auto-explore"; stairs rows say "(or walk to >/<)".
+- Code: `PlayingGame.cpp` `startAuto/stopAuto/autoStep/scanView` (+ members in `.hpp`).
+  Known grid = `Zone::recordedTerrainAt` (!=0 known) and `recordedObjectAt` (!=0 = seen;
+  vision is a 90° cone, so "seen" is the frontier test). Frontier = unvisited passable known
+  cell next to an unseen cell, or a visible item cell; per-zone visited/skip sets.
+  Doors: walking into a closed door opens it (game's own bump); its "You activate the
+  door." message is ignored; a door that stays shut is skipped next time.
+  Stops: visible alien ("In view: <name>."), new item in view (per zone, items in view at
+  the key press don't stop), any new message, any key (dropped), step that didn't move
+  ("Something is in the way.", cell skipped), zone change, "Nothing left to explore."
+  or "...blocked doors or obstacles cut the way.".
+- Hook: web `Console::readKey` returns synthetic `KeyCode(1,true)` after `emscripten_sleep(40)`
+  while `extern "C" bool rvip_auto_on` is set (a queued real key clears it and is dropped);
+  `exitToChild` (story/message boxes) clears it.
+- **`>`/`<`** (FloorUp/FloorDown; the game draws up-stairs as `>`): off the stairs, walk to the
+  nearest known unbroken stairs of that kind and stop ("You reach the stairs up. Press it
+  again to climb."); stops only when more aliens are in view than at the start.
+- **No --More--:** the game has none (message log panel; story/terminal boxes are one-off
+  MessageBoxes needing Enter, kept). Nothing to add.
+- **Bug fixed (stage 1 leftover):** `ConsoleView` slept `clock()` ticks as ms
+  (CLOCKS_PER_SEC = 1e6 under Emscripten): every multi-frame action (a move) froze input ~20 s.
+  Now `sleep(ticks*1000/CLOCKS_PER_SEC)` in `web/rl-shared.patch`; patch also adds
+  `MessageDisplay::hasNewMessage()`.
+- Header edits: `build.sh` only checks .cpp mtimes — touch includers (or `rm -rf web/obj`).
+- Tested (Playwright headless): H runs across a floor with door opening and item/message
+  stops; `>` from off-stairs walks, arrival stop, second `>` climbs to 1st Floor;
+  "You don't know of any reachable stairs up." with none known.
+
 ### Open
-- No deploy (cloud run). Mac check in the browser pane still to do.
+- No deploy (cloud run). Mac check in the browser pane still to do (stage 1 + 2: watch explore painting).
+- Explore key interrupt not tested headless (Asyncify timing); explore not run on deep/dark floors.
 - Saves/mortem/keys go to MEMFS `/`, not IDBFS yet (5.10, later stage).
 - Screen is one 80x40 grid; splitting into WM windows is stage 5.

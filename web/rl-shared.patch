@@ -13,7 +13,7 @@ index 6a44361..5c9c4d2 100644
  
  
 diff --git a/ConsoleView/ConsoleView.cpp b/ConsoleView/ConsoleView.cpp
-index 68b8a23..fadfb33 100644
+index 68b8a23..b00f0a8 100644
 --- a/ConsoleView/ConsoleView.cpp
 +++ b/ConsoleView/ConsoleView.cpp
 @@ -15,7 +15,7 @@ namespace RL_shared
@@ -25,6 +25,15 @@ index 68b8a23..fadfb33 100644
  
  
  
+@@ -69,7 +69,7 @@ void ConsoleViewImpl::run(void)
+ 		{
+ 			std::clock_t sleep_time(frame_end - std::clock());
+ 			if ((sleep_time > 0) && (sleep_time < frame_time))
+-				m_console_window.sleep( sleep_time );
++				m_console_window.sleep( (int)(sleep_time * 1000 / CLOCKS_PER_SEC) );
+ 			frame_end = std::clock() + frame_time;
+ 
+ 			m_ui.draw( m_console_window, m_model );
 diff --git a/Game/GameObject.hpp b/Game/GameObject.hpp
 index b4fe13c..f48bd5a 100644
 --- a/Game/GameObject.hpp
@@ -36,6 +45,18 @@ index b4fe13c..f48bd5a 100644
 +class World;
  class GameModel;
  
+ 
+diff --git a/Messages/Console/MessageDisplay.hpp b/Messages/Console/MessageDisplay.hpp
+index dae53c9..7a7d64b 100644
+--- a/Messages/Console/MessageDisplay.hpp
++++ b/Messages/Console/MessageDisplay.hpp
+@@ -42,6 +42,7 @@ public:
+ 
+ 	void addString( const char * );
+ 	void beginNewMessage(void);
++	bool hasNewMessage(void) const { return m_new_msg; }
+ 	void scrollUp(void);
+ 	void scrollDown(void);
  
 diff --git a/World-2DTiles/World.hpp b/World-2DTiles/World.hpp
 index c97e1d7..5568a10 100644

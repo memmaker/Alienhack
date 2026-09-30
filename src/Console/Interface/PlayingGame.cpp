@@ -69,6 +69,11 @@ namespace AlienHack
 
 using namespace RL_shared;
 using namespace boost;
+#ifdef __EMSCRIPTEN__
+extern "C" bool rvip_auto_on;
+#else
+static bool rvip_auto_on = false;
+#endif
 
 
 namespace
@@ -468,6 +473,8 @@ PlayingGame::PlayingGame(
 , m_shown_good_ending_text_2(false)
 , m_shown_death_msg(false)
 , m_shown_mortem(false)
+, m_auto(0), m_auto_zone(INVALID_KEY), m_auto_px(0), m_auto_pz(0), m_auto_tx(0), m_auto_tz(0)
+, m_auto_moved(false), m_auto_door(false), m_auto_aliens(0)
 {
 	ASSERT( m_key_map );
 }
@@ -600,8 +607,193 @@ void PlayingGame::enterFromChild( AGameModel& in_model )
 }
 void PlayingGame::exitToChild( AGameModel& )
 {
+	m_auto = 0;
+	rvip_auto_on = false;
 }
 
+
+// ---- RVIP auto-explore / stair walk -------------------------------------
+// The web console's readKey() returns the synthetic key AUTO_KEY (after a
+// ~40 ms paint delay) while rvip_auto_on is set; a real key clears the flag.
+namespace { const RL_shared::KeyCode AUTO_KEY( (char)1, true ); }
+
+int PlayingGame::scanView( AHGameModel& model, std::string* alien_name, std::string* new_item, bool record_items )
+{
+	World& world( model.world() );
+	const WorldObject& pobj( world.object( model.avatar() ) );
+	DBKeyValue zk( pobj.location().zone );
+	const Zone& zone( world.zone( zk ) );
+	int aliens = 0, best = 1<<30;
+	for (int z=0; z < zone.sizeZ(); ++z)
+		for (int x=0; x < zone.sizeX(); ++x)
+		{
+			if (!model.isVisible(zk, x, z))
+				continue;
+			BOOST_FOREACH( DBKeyValue ok, zone.objectsAt(x, z) )
+			{
+				if ((ok == model.avatar()) || !world.objectExists(ok))
+					continue;
+				const AHGameObject& o( dynamic_cast< const AHGameObject& >( world.object(ok) ) );
+				if (objects::Alien == o.type())
+				{
+					if (!o.shouldDraw())
+						continue;
+					++aliens;
+					int d = (x-pobj.location().x)*(x-pobj.location().x) + (z-pobj.location().z)*(z-pobj.location().z);
+					if (alien_name && d < best) { best = d; *alien_name = o.getSelectName(false); }
+				}
+				else if ((objects::Pickup == o.type()) || (objects::Armour == o.type()) || (objects::Weapon == o.type()))
+				{
+					if (m_ex_items.insert(ok).second && !record_items && new_item && new_item->empty())
+						*new_item = o.getSelectName(false);
+				}
+			}
+		}
+	return aliens;
+}
+
+void PlayingGame::startAuto( AHGameModel& model, int mode )
+{
+	const WorldObject& pobj( model.world().object( model.avatar() ) );
+	m_auto = mode;
+	m_auto_zone = pobj.location().zone;
+	m_auto_moved = m_auto_door = false;
+	m_auto_aliens = scanView( model, 0, 0, true );
+	rvip_auto_on = true;
+}
+
+void PlayingGame::stopAuto( const std::string& msg )
+{
+	m_auto = 0;
+	rvip_auto_on = false;
+	if (!msg.empty())
+		m_msgs.addString( msg.c_str() );
+}
+
+// One step of explore / stair walk. Returns true with a direction to move,
+// false when it stopped (message already given).
+bool PlayingGame::autoStep( AHGameModel& model, int& mx, int& mz )
+{
+	World& world( model.world() );
+	const WorldObject& pobj( world.object( model.avatar() ) );
+	WorldObject::WorldLocation loc( pobj.location() );
+	if (loc.zone != m_auto_zone) { stopAuto(""); return false; }
+	Zone& zone( world.zone( loc.zone ) );
+	std::set<int>& visited( m_ex_visited[loc.zone] );
+	std::set<int>& skip( m_ex_skip[loc.zone] );
+	const int W = zone.sizeX(), H = zone.sizeZ();
+	const bool explore = (1 == m_auto);
+
+	// results of the previous step
+	if (m_auto_door)
+	{
+		if (!terrain::isOpen( zone.terrainAt(m_auto_tx, m_auto_tz) ) && !terrain::isBroken( zone.terrainAt(m_auto_tx, m_auto_tz) ))
+			skip.insert( m_auto_tz*W + m_auto_tx );
+	}
+	else if (m_auto_moved && (loc.x == m_auto_px) && (loc.z == m_auto_pz))
+	{
+		skip.insert( m_auto_tz*W + m_auto_tx );
+		stopAuto("Something is in the way.");
+		return false;
+	}
+	visited.insert( loc.z*W + loc.x );
+
+	std::string alien, item;
+	int aliens = scanView( model, &alien, &item, false );
+	if (explore ? (aliens > 0) : (aliens > m_auto_aliens))
+	{
+		stopAuto( "In view: " + alien + "." );
+		return false;
+	}
+	if (explore && !item.empty())
+	{
+		stopAuto( "In view: " + item + "." );
+		return false;
+	}
+
+	const TerrainType stair_type = (2 == m_auto) ? (TerrainType)terrain::StairsUp : (TerrainType)terrain::StairsDown;
+	if (!explore && (zone.terrainAt(loc.x, loc.z) == stair_type))
+	{
+		stopAuto( (2 == m_auto) ? "You reach the stairs up. Press it again to climb." : "You reach the stairs down. Press it again to descend." );
+		return false;
+	}
+
+	// BFS over what the player knows (recorded terrain), 8 directions.
+	std::vector<int> prev( W*H, -2 );
+	std::vector<int> queue;
+	int start = loc.z*W + loc.x;
+	prev[start] = -1;
+	queue.push_back(start);
+	int goal = -1;
+	bool blocked_by_skip = false;
+	for (size_t qi = 0; (qi < queue.size()) && (goal < 0); ++qi)
+	{
+		int c = queue[qi], cx = c % W, cz = c / W;
+		if (c != start)
+		{
+			TerrainType rec( zone.recordedTerrainAt(cx, cz) );
+			if (explore)
+			{
+				bool target = false;
+				if (!visited.count(c))
+				{
+					for (int dz=-1; dz<=1 && !target; ++dz)
+						for (int dx=-1; dx<=1; ++dx)
+							if (zone.isWithin(cx+dx, cz+dz) && (0 == zone.recordedObjectAt(cx+dx, cz+dz)))
+								{ target = true; break; }
+					if (!target && model.isVisible(loc.zone, cx, cz))
+						BOOST_FOREACH( DBKeyValue ok, zone.objectsAt(cx, cz) )
+							if (world.objectExists(ok))
+							{
+								WorldObjectType t( dynamic_cast< const AHGameObject& >( world.object(ok) ).type() );
+								if ((objects::Pickup == t) || (objects::Armour == t) || (objects::Weapon == t))
+									target = true;
+							}
+				}
+				if (target) { goal = c; break; }
+			}
+			else if (rec == stair_type)
+			{
+				goal = c; break;
+			}
+		}
+		bool here_door = (terrain::Door == terrain::getType( zone.recordedTerrainAt(cx, cz) ));
+		for (int dz=-1; dz<=1; ++dz)
+			for (int dx=-1; dx<=1; ++dx)
+			{
+				if (!dx && !dz) continue;
+				int nx = cx+dx, nz = cz+dz;
+				if (!zone.isWithin(nx, nz)) continue;
+				int n = nz*W + nx;
+				if (prev[n] != -2) continue;
+				TerrainType rec( zone.recordedTerrainAt(nx, nz) );
+				if (0 == rec) continue;
+				if (!terrain::isPassable(rec, true)) continue;
+				bool door = (terrain::Door == terrain::getType(rec));
+				if ((door || here_door) && dx && dz) continue;
+				if (skip.count(n)) { blocked_by_skip = true; continue; }
+				prev[n] = c;
+				queue.push_back(n);
+			}
+	}
+	if (goal < 0)
+	{
+		if (explore)
+			stopAuto( blocked_by_skip ? "Nothing reachable left to explore: blocked doors or obstacles cut the way." : "Nothing left to explore." );
+		else
+			stopAuto( (2 == m_auto) ? "You don't know of any reachable stairs up." : "You don't know of any reachable stairs down." );
+		return false;
+	}
+	int step = goal;
+	while (prev[step] != start) step = prev[step];
+	m_auto_tx = step % W; m_auto_tz = step / W;
+	m_auto_px = loc.x; m_auto_pz = loc.z;
+	mx = m_auto_tx - loc.x; mz = m_auto_tz - loc.z;
+	TerrainType real( zone.terrainAt(m_auto_tx, m_auto_tz) );
+	m_auto_door = (terrain::Door == terrain::getType(real)) && !terrain::isOpen(real) && !terrain::isBroken(real);
+	m_auto_moved = !m_auto_door;
+	return true;
+}
 
 PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& input, AGameModel& in_model )
 {
@@ -614,6 +806,12 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		showMortem();
 		return CommandResult( false, true );
 	}
+
+	const bool auto_key = (dynamic_cast<const KeyPress&>(input).value == AUTO_KEY);
+	const bool had_new_msg = m_msgs.hasNewMessage();
+	const bool was_door = m_auto_door;
+	if (m_auto && (!auto_key || !rvip_auto_on))
+		stopAuto("");	// a real key interrupted the walk
 
 	m_msgs.beginNewMessage();
 
@@ -635,7 +833,26 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 	//{
 	//}
 
-	if (m_key_map->isFunction(input, "Help"))
+	if (auto_key)
+	{
+		if (!m_auto)
+			return CommandResult( false, true );
+		if (had_new_msg && !was_door)
+		{
+			stopAuto("");
+			return CommandResult( false, true );
+		}
+		if (!autoStep(model, mx, mz))
+			return CommandResult( false, true );
+		move = true;
+		m_move_only = m_turn_only = m_activating_object = m_placing_charge = false;
+	}
+	else if (m_key_map->isFunction(input, "Explore"))
+	{
+		startAuto( model, 1 );
+		return CommandResult( false, true );
+	}
+	else if (m_key_map->isFunction(input, "Help"))
 	{
 		shared_ptr< HelpScreen > newstate( new HelpScreen(interfaceStateMachine(), m_key_map, model.isCountdownActive() ? HelpScreen::Red : HelpScreen::Normal) );
 		setNextState( newstate );
@@ -844,7 +1061,12 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		if (world.zoneExists(loc.zone))
 		{
 			Zone& zone( world.zone( loc.zone ) );
-			if (terrain::StairsUp == zone.terrainAt(loc.x, loc.z))
+			if (terrain::StairsUp != zone.terrainAt(loc.x, loc.z))
+			{
+				startAuto( model, 2 );
+				return CommandResult( false, true );
+			}
+			else
 			{
 				OverWorld::BlockAndFloor bnf = overworld.getBlockAndFloor(loc.zone);
 				if (bnf.floor < OverWorld::MAX_FLOORS)
@@ -868,7 +1090,12 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		if (world.zoneExists(loc.zone))
 		{
 			Zone& zone( world.zone( loc.zone ) );
-			if (terrain::StairsDown == zone.terrainAt(loc.x, loc.z))
+			if (terrain::StairsDown != zone.terrainAt(loc.x, loc.z))
+			{
+				startAuto( model, 3 );
+				return CommandResult( false, true );
+			}
+			else
 			{
 				OverWorld::BlockAndFloor bnf = overworld.getBlockAndFloor(loc.zone);
 				if (bnf.floor > OverWorld::FLOOR_MIN)

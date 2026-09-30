@@ -184,10 +184,10 @@ void HelpScreen::draw( AOutputWindow& window, AGameModel& in_model ) const
 	console.drawText( 2, 13, "Wait", text_col );
 	drawControls( console, controls, "Wait", 26, 13, hl_col );
 
-	console.drawText( 2, 14, "Up one floor", text_col );
+	console.drawText( 2, 14, "Up one floor (or walk to >)", text_col );
 	drawControls( console, controls, "FloorUp", 26, 14, hl_col );
 
-	console.drawText( 2, 15, "Down one floor", text_col );
+	console.drawText( 2, 15, "Down one floor (or to <)", text_col );
 	drawControls( console, controls, "FloorDown", 26, 15, hl_col );
 
 	console.drawText( 2, 16, "Strafe", text_col );
@@ -211,6 +211,8 @@ void HelpScreen::draw( AOutputWindow& window, AGameModel& in_model ) const
 	console.drawText( 2, 22, "Operate (door/terminal)", text_col );
 	drawControls( console, controls, "Operate", 26, 22, hl_col );
 
+	console.drawText( 2, 23, "Auto-explore", text_col );
+	drawControls( console, controls, "Explore", 26, 23, hl_col );
 	//console.drawText( 2, 23, "Drop armour", text_col );
 	//drawControls( console, controls, "Armour", 26, 23, hl_col );
 

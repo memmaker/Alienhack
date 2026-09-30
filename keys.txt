@@ -41,3 +41,4 @@ Krak			k
 Medkit		m
 Neutraliser		n
 Demolition		e
+Explore		H

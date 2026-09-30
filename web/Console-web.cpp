@@ -12,6 +12,9 @@ EM_JS(int, web_poll_key, (void), {
   var q = Module.rvipKeys; return (q && q.length) ? q.shift() : -1;
 });
 
+// Set by the game while auto-explore / a stair walk runs (PlayingGame.cpp).
+extern "C" { bool rvip_auto_on = false; }
+
 namespace RL_shared
 {
 
@@ -48,6 +51,13 @@ void Console::sleep(int ms) { emscripten_sleep(ms > 0 ? ms : 0); }
 KeyCode Console::readKey(void)
 {
 	int k;
+	if (rvip_auto_on)
+	{	// paint the step, then either a real key cancels (and is dropped) or the next step runs
+		emscripten_sleep(40);
+		if ((k = web_poll_key()) < 0)
+			return KeyCode( (char)1, true );
+		rvip_auto_on = false;
+	}
 	while ((k = web_poll_key()) < 0) emscripten_sleep(16);
 	return KeyCode( (char)(k & 0xff), (k & 0x100) != 0 );
 }

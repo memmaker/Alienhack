@@ -6,6 +6,10 @@
 #include "Messages/Console/MessageDisplay.hpp"
 #include "Interface/InterfaceState.hpp"
 #include <boost/shared_ptr.hpp>
+#include "DBKeyValue.hpp"
+#include <map>
+#include <set>
+#include <string>
 
 
 namespace RL_shared
@@ -85,6 +89,19 @@ private:
 	bool m_shown_good_ending_text_2;
 	bool m_shown_death_msg;
 	bool m_shown_mortem;
+
+	// RVIP: auto-explore (H) and stair walks (< / >). m_auto: 0 off, 1 explore, 2 walk to up stairs, 3 to down stairs.
+	int m_auto;
+	RL_shared::DBKeyValue m_auto_zone;
+	int m_auto_px, m_auto_pz, m_auto_tx, m_auto_tz;
+	bool m_auto_moved, m_auto_door;
+	int m_auto_aliens;
+	std::map< RL_shared::DBKeyValue, std::set<int> > m_ex_visited, m_ex_skip;
+	std::set< RL_shared::DBKeyValue > m_ex_items;
+	void startAuto( AHGameModel&, int mode );
+	void stopAuto( const std::string& msg );
+	bool autoStep( AHGameModel&, int& mx, int& mz );
+	int scanView( AHGameModel&, std::string* alien_name, std::string* new_item, bool record_items );
 
 	void writeMortem( RL_shared::AGameModel& in_model );
 	void showMortem();
