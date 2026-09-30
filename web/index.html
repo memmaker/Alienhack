@@ -215,6 +215,9 @@ var Module = {
   },
   rvipPane: function (id, s) {
     if (id === 'inv') setText($('inv'), s);
+    else if (id === 'screen') setText($('screen'), s);
+    else if (id === 'stat') setText($('stat'), s);
+    else if (id === 'msg') { lastMsg = null; RvipWM.setLog($('msg'), []); }
     else if (id === 'vis') RvipWM.visible($('vis'), s);
   },
   rvipMsg: function (t, fresh) {

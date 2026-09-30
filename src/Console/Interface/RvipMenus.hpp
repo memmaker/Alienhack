@@ -23,7 +23,7 @@ struct RvipBase
 	~RvipBase() { --rvip_base; }
 };
 namespace RL_shared { class IFunctionMap; }
-namespace AlienHack { class AHGameModel; void rvipSidePanes( const AHGameModel&, const RL_shared::IFunctionMap& ); }
+namespace AlienHack { class AHGameModel; void rvipSidePanes( const AHGameModel&, const RL_shared::IFunctionMap& ); void rvipClearPanes(); }
 #endif
 
 namespace AlienHack

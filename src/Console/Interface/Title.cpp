@@ -3,6 +3,7 @@
 #include "LoadOrNew.hpp"
 #include "GameTypeMenu.hpp"
 #include "draw.hpp"
+#include "RvipMenus.hpp"
 #include "../../Model/AHGameModel.hpp"
 #include "../../Model/save.hpp"
 #include "ConsoleView/KeyMap.hpp"
@@ -194,7 +195,9 @@ namespace
 void Title::draw( AOutputWindow& window, AGameModel& in_model ) const
 {
 	Console& console( dynamic_cast<Console&>(window) );
-
+#ifdef __EMSCRIPTEN__
+	rvipClearPanes();
+#endif
 	console.clearScreen();
 	drawOuterFrame(console, false);
 

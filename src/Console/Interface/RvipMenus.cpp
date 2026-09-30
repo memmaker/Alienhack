@@ -353,9 +353,16 @@ namespace AlienHack
 // RVIP stage 5: the Inventory and Visible windows, built from the game's data at the
 // command prompt (PlayingGame::draw). Inventory rows "a) <glyph> name" in the item's
 // colour ("\x01<fg><bg>" = colour of the text after it); Visible = RvipWM.visible lines.
+static std::string last_inv("\x02"), last_vis("\x02");   // sentinels: an empty list is sent too
+// Back on the title: empty every side window (Title::draw); the next game sends them anew.
+void rvipClearPanes()
+{
+	if (last_inv.empty() && last_vis.empty()) return;
+	last_inv.clear(); last_vis.clear();
+	rvip_pane("inv", ""); rvip_pane("vis", ""); rvip_pane("stat", ""); rvip_pane("msg", "");
+}
 void rvipSidePanes( const AHGameModel& model, const IFunctionMap& keys )
 {
-	static std::string last_inv("\x02"), last_vis("\x02");   // sentinels: an empty list is sent too
 	const World& world( model.world() );
 	if (!world.objectExists(model.avatar())) return;
 	const PlayerCharacter& pc( dynamic_cast<const PlayerCharacter&>( world.object( model.avatar() ) ) );
