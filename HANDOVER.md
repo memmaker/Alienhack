@@ -225,6 +225,21 @@
   index.html/js/wasm/data/help.html = web/dist; og:image, card Info, tree ✦, `h1` → shrine all live.
 - Still open: Mac pane look, 375 px, screenshots, Menlo killer art, real death → graveyard.
 
+### Mac: final (2026-09-30)
+- Killer art rerun with Menlo (roguelikes-index 853b166).
+- Fixed: pop-ups blanked the cells under them (Enter menu → left of Status; Map patches): `Console-web.cpp`
+  keeps a base and an over layer (b8f5f7b). Pane check: Status intact with the menu open, map canvas
+  identical before/during/after the Enter menu and inventory.
+- Game deployed (live md5 of index.html/js/wasm/data/help.html = web/dist).
+- Real death in the live game (pane): beacon `ev=death&name=John%20Doe&killer=Juvenile&depth=0&id=..&at=..` → 204,
+  outbox empty; not on graveyard.html (pane UA filtered server-side, as expected).
+- Bad ending ("Escaped, but obliterated in the reactor explosion") stays `ev=death`: the ending text annihilates
+  the hero, like the world-explosion death.
+- **Mac: done** — killer art, display fix, game deploy, beacon send check.
+- **Still open:** roguelikes-index `deploy.sh` refused (another session's uncommitted index.html): shrine
+  screenshots/trivia (`shrine/alienhack/*.png` 404 live) and the Menlo killer art are not live yet — rerun
+  `deploy.sh` there once that tree is clean. The user should play one real death to see it on graveyard.html.
+
 ### Mac: stage-6 follow-up (sound levels, alert/hiss, Docs)
 - Sounds measured (Python wave): 0.03–1.2 s, no clipping, no silence; RMS spread was 14.8 dB (heal −12,
   click −27 dBFS). mksounds.py now levels all to −18 dBFS RMS, peak ≤ −3 dBFS (spread 4.9 dB; stairs −23, peaky steps).
