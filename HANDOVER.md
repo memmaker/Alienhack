@@ -192,8 +192,11 @@
   No wizard/debug mode in code. No screenshots section (none taken in cloud). No web research done
   beyond stage-7 sources (Rogue Temple topic 5669, GitHub).
 - Links: card Info button, tree ✦, game page `#bar h1` link (web/index.html).
-- Open: deploy both repos + check the three links live; 375 px scrollWidth check; screenshots; AliensRL
-  history (Kornel Kisielewicz, ChaosForge) could get more trivia.
+- Mac follow-up: 3 screenshots (map, Enter menu, inventory; headless Playwright), 4 AliensRL/ChaosForge trivia
+  (RogueBasin AliensRL + Kornel_Kisielewicz), 375 px: no overflow. Help tips: door ramming (BreakDoorAction),
+  vents ("An alien crawls out of a ventilation shaft!"), close range (ah_readme) now sourced.
+- Open: deploy both repos + check the three links live. Bug seen headless: closing the Enter menu / inventory
+  pop-up leaves blanks in the Map window, and the Enter menu blanks the left part of the Status window.
 
 ### Stage 9 — Graveyard / beacon (done, cloud run; not deployed)
 - Hook = the three places the game writes the mortem (`PlayingGame::notifyAHGameModelAdvance`):
