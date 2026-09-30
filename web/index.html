@@ -263,6 +263,18 @@ function startWM() {
   applyFonts();
 }
 
+/* ---- mouse: a click on a pop-up / whole-screen line sends its line number; the game picks the row ---- */
+function lineAt(el, e) {
+  var cs = getComputedStyle(el), r = el.getBoundingClientRect();
+  return Math.floor((e.clientY - r.top - parseFloat(cs.paddingTop) + el.scrollTop) / parseFloat(cs.lineHeight));
+}
+[['pop', 0x800], ['screen', 0x1000]].forEach(function (p) {
+  $(p[0]).addEventListener('click', function (e) {
+    var n = lineAt($(p[0]), e);
+    if (app.running && n >= 0 && n < 256) Module.rvipKeys.push(p[1] | n);
+  });
+});
+
 /* ---- keys ---- */
 var KEYS = { ArrowUp: 0x148, ArrowDown: 0x150, ArrowLeft: 0x14b, ArrowRight: 0x14d, Home: 0x147, PageUp: 0x149, End: 0x14f, PageDown: 0x151,
   Enter: 13, Escape: 27, Backspace: 8, Tab: 9 };

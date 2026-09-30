@@ -11,7 +11,9 @@
 #include <cctype>
 
 #ifndef __EMSCRIPTEN__
-extern "C" { int rvip_next_key = -1; bool rvip_numpad_raw = false; }
+extern "C" { int rvip_next_key = -1; bool rvip_numpad_raw = false; int rvip_click_row = -1; }
+#else
+extern "C" { extern int rvip_click_row; }	// screen row of the last mouse click (ext key 3), web/Console-web.cpp
 #endif
 
 namespace AlienHack
@@ -37,10 +39,19 @@ namespace
 	bool keyPgDn( const KeyCode& k )  { return isKey(k, 81, true) || isKey(k, '3', true); }
 	bool keyClose( const KeyCode& k ) { return isKey(k, 27, false) || isKey(k, '0', true) || isKey(k, '.', true); }
 	bool keyChoose( const KeyCode& k ){ return isKey(k, 13, false) || isKey(k, '5', true); }
+	bool keyClick( const KeyCode& k ) { return isKey(k, 3, true); }
+}
+
+// Row index of the last drawn list under a mouse click, -1 if the click missed it.
+int RvipMenuBase::clicked() const
+{
+	int y = rvip_click_row;
+	if ((y < m_row0 + m_ctop) || (y >= m_row0 + m_ctop + m_cvis)) return -1;
+	return y - m_row0;
 }
 
 RvipMenuBase::RvipMenuBase( weak_ptr< InterfaceStateMachine > ism, shared_ptr< IFunctionMap > keys, bool red )
-: InterfaceState( ism ), m_key_map( keys ), m_red( red ), m_done( false ), m_top( 0 )
+: InterfaceState( ism ), m_key_map( keys ), m_red( red ), m_done( false ), m_top( 0 ), m_row0( 0 ), m_ctop( 0 ), m_cvis( 0 )
 {
 }
 void RvipMenuBase::enterFromParent( AGameModel& ) { rvip_numpad_raw = true; }
@@ -81,6 +92,7 @@ void RvipMenuBase::drawList( AOutputWindow& window, const std::string& title, co
 	int x0 = (dims.x - w) / 2;
 	int y0 = (yhint >= 0) ? (std::min)(yhint, dims.y - h) : (dims.y - h) / 2;
 	int x1 = x0 + w - 1, y1 = y0 + h - 1;
+	m_row0 = y0 + 1 - top; m_ctop = top; m_cvis = vis;
 
 	for (int y = y0; y <= y1; ++y)
 		for (int x = x0; x <= x1; ++x)
@@ -161,7 +173,12 @@ CommandMenu::CommandResult CommandMenu::interpretInput( const AUserInputItem& in
 			rvipRunCommand(m_fn[i]); m_done = true;
 			return CommandResult( false, true );
 		}
-	if (keyUp(k)) move(-1);
+	if (keyClick(k))
+	{
+		int i = clicked();
+		if ((i >= 0) && !m_rows[i].header) { m_cursor = i; rvipRunCommand(m_fn[i]); m_done = true; }
+	}
+	else if (keyUp(k)) move(-1);
 	else if (keyDown(k)) move(1);
 	else if (keyPgUp(k)) { for (int i = 0; i < 10; ++i) move(-1); }
 	else if (keyPgDn(k)) { for (int i = 0; i < 10; ++i) move(1); }
@@ -258,7 +275,8 @@ InventoryMenu::CommandResult InventoryMenu::interpretInput( const AUserInputItem
 		for (size_t i = 0; i < it.actions.size(); ++i)
 			if (it.actions[i].key && isKey(k, it.actions[i].key, it.actions[i].ext)) { choose(it.actions[i].cmd, true); return CommandResult( false, true ); }
 		int n = (int)it.actions.size();
-		if (keyUp(k)) m_act = (m_act + n - 1) % n;
+		if (keyClick(k)) { int i = clicked(); if (i >= 0) choose(it.actions[i].cmd, true); else m_act = -1; }
+		else if (keyUp(k)) m_act = (m_act + n - 1) % n;
 		else if (keyDown(k)) m_act = (m_act + 1) % n;
 		else if (keyChoose(k) || isKey(k, '6', true) || isKey(k, ' ', false)) choose(it.actions[m_act].cmd, true);
 		else if (keyClose(k) || isKey(k, '4', true)) m_act = -1;
@@ -282,6 +300,12 @@ InventoryMenu::CommandResult InventoryMenu::interpretInput( const AUserInputItem
 				choose(cmd, true);
 				return CommandResult( false, true );
 			}
+	}
+	if (keyClick(k))
+	{	// click = move the cursor there and choose (item menu, or drop in the drop prompt)
+		int i = clicked();
+		if (i >= 0) { m_cursor = i; if (m_drop) choose("Drop:" + m_items[i].fn, false); else m_act = 0; }
+		return CommandResult( false, true );
 	}
 	const Item& it( m_items[m_cursor] );
 	int n = (int)m_items.size();

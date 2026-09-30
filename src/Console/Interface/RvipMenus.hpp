@@ -50,6 +50,8 @@ protected:
 	// Box sized to content (title counts), centred, scrolls when taller than the screen.
 	void drawList( RL_shared::AOutputWindow&, const std::string& title, const std::vector<Row>& rows, int cursor, int& top, int yhint ) const;
 	std::string keyName( const std::string& fn ) const;
+	int clicked() const;
+	mutable int m_row0, m_ctop, m_cvis;	// last drawList: screen row of row 0, first shown row, shown rows
 	boost::shared_ptr< RL_shared::IFunctionMap > m_key_map;
 	bool m_red, m_done;
 	mutable int m_top;

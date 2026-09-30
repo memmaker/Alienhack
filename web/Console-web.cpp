@@ -40,6 +40,10 @@ extern "C" { int rvip_next_key = -1; bool rvip_numpad_raw = false; }
 // RVIP stage 5: cells drawn while rvip_base > 0 belong to the main screen (RvipBase in
 // PlayingGame/LookMode/TargetSelect::draw); rvip_main_screen = PlayingGame drew it.
 extern "C" { int rvip_base = 0; bool rvip_main_screen = false; }
+// Mouse: the page sends 0x800|line for a click on the pop-up, 0x1000|row on the whole screen;
+// readKey turns it into ext key 3 with rvip_click_row = the screen row (menus choose that row).
+extern "C" { int rvip_click_row = -1; }
+static int rvip_pop_y0 = 0;
 namespace AlienHack { std::string rvip_zone_name; }
 
 // The console's 16 colours (Windows console palette), index = Console::Colour.
@@ -148,6 +152,7 @@ void Console::updateScreen(void)
 			over = true;
 			if (x < bx0) bx0 = x; if (x > bx1) bx1 = x; if (y < by0) by0 = y; if (y > by1) by1 = y;
 		}
+	rvip_pop_y0 = over ? by0 : 0;
 	if (over) popup = d.based ? rvipBlock(d, bx0, by0, bx1, by1, rvipOver) : rvipBlock(d, bx0, by0, bx1, by1, rvipAny);
 	if (d.based)
 	{	// Map = the world view (the game centres it on the player); Status = zone + HUD;
@@ -182,6 +187,11 @@ KeyCode Console::readKey(void)
 		rvip_auto_on = false;
 	}
 	while ((k = web_poll_key()) < 0) emscripten_sleep(16);
+	if (k & 0x1800)
+	{
+		rvip_click_row = (k & 0xff) + ((k & 0x800) ? rvip_pop_y0 : 0);
+		return KeyCode( (char)3, true );
+	}
 	if (k & 0x400)	// Ctrl+letter (page sends 0x400|'a'..'z') -> ext 0xA0+index
 		return KeyCode( (char)(0xA0 + ((k & 0xff) - 'a')), true );
 	if (k & 0x200)
