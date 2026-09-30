@@ -160,3 +160,12 @@
   ZAPM. No Tiles button; stage 5 builds the page without a tile switch.
 - Text mode may use a period font (Oldschool PC Font Resource, CC BY-SA 4.0, credit) — stage 5.
 - Open: no deploy in this cloud run.
+
+### Stage 8 — Shrine (done, cloud run; not deployed)
+- `roguelikes/shrine/alienhack.html` (zapm template) + `shrine/alienhack/manual.txt` (ah_readme.txt, CC0).
+  Stats from code: 15 alien types (`Alien.hpp`), 11 weapons, 8 armours, 18 pickups; ~26k lines/154 files.
+  No wizard/debug mode in code. No screenshots section (none taken in cloud). No web research done
+  beyond stage-7 sources (Rogue Temple topic 5669, GitHub).
+- Links: card Info button, tree ✦, game page `#bar h1` link (web/index.html).
+- Open: deploy both repos + check the three links live; 375 px scrollWidth check; screenshots; AliensRL
+  history (Kornel Kisielewicz, ChaosForge) could get more trivia.
