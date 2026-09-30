@@ -5,6 +5,9 @@
 #include <stdlib.h>
 #include <ctime>
 #include <iostream>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 
 
 using namespace AlienHack;
@@ -39,5 +42,10 @@ int main(void)
 	{
 		std::cerr << "Unknown exception!";
 	}
+#ifdef __EMSCRIPTEN__
+	// RVIP: the game ended (quit, save and quit, death screens done): the page syncs and reloads
+	EM_ASM( if (Module.rvipEnd) Module.rvipEnd(); );
+	for (;;) emscripten_sleep(1000);
+#endif
 }
 

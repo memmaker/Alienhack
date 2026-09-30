@@ -1,31 +1,269 @@
 <!doctype html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AlienHack</title>
 <style>
-body{background:#000;color:#ccc;margin:0;padding:8px}
-#screen{font:14px/1.15 monospace;margin:0;white-space:pre}
+:root{--bg:#0b0b0e;--panel:#16161a;--line:#2b2b33;--dim:#8a8a96;--accent:#d9b24c;--gut:#1d1d23}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:var(--bg);color:#dcdcdc;font:13px/1.4 system-ui,sans-serif;overflow:hidden}
+#bar{display:flex;align-items:center;gap:6px;height:34px;padding:0 8px;border-bottom:1px solid var(--line);background:var(--panel);white-space:nowrap}
+#bar h1{font-size:14px;margin:0 6px 0 0;color:var(--accent)}
+#bar select{max-width:170px}
+#bar button,#bar select{background:#22222a;color:#dcdcdc;border:1px solid var(--line);border-radius:4px;padding:2px 8px;font:inherit;cursor:pointer}
+#bar .sep{width:1px;height:18px;background:var(--line);margin:0 2px}
+#bar .hint{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;color:var(--dim);font-size:12px;text-align:right}
+kbd{background:#22222a;border:1px solid var(--line);border-radius:3px;padding:0 4px;font:11px ui-monospace,Menlo,monospace;color:#dcdcdc}
+#game{position:absolute;left:0;right:0;top:34px;bottom:0}
+.win{position:absolute;display:flex;flex-direction:column;background:#000;border:1px solid var(--line);overflow:hidden}
+.win>.t{flex:none;display:flex;align-items:center;gap:6px;height:20px;padding:0 6px;background:var(--panel);color:var(--dim);font-size:12px}
+.win>.t .name{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.win>.t select{font-size:11px;max-width:120px;background:#000;color:#dcdcdc;border:1px solid var(--line);visibility:hidden}
+.win>.t:hover select{visibility:visible}
+.win>.body{flex:1;min-height:0;position:relative}
+.txt{margin:0;padding:3px 6px;font-family:var(--face,ui-monospace,Menlo,monospace);font-size:13px;line-height:1.25;white-space:pre;color:#aaa}
+#t-map .body,#t-screen .body{overflow:hidden}
+#map,#screen{display:block;image-rendering:pixelated}
+#t-screen .body{display:flex;align-items:center;justify-content:center}
+#msg{font-family:var(--face,ui-monospace,Menlo,monospace);color:#55ff55}
+#msg>div{white-space:pre-wrap}
+#vis{font-family:var(--face,ui-monospace,Menlo,monospace)}
+#pop{position:absolute;z-index:5;overflow:auto;background:#000;border:1px solid var(--accent);font-size:var(--popfs,13px)}
+#pop[hidden],.wm-single #pop{display:none}
+.wm-single .wm-topl{display:none}
+.wm-topl{font-family:var(--face,ui-monospace,Menlo,monospace)!important;color:#55ff55}
+#status{position:fixed;left:50%;bottom:12px;transform:translateX(-50%);z-index:30;background:var(--panel);border:1px solid var(--line);padding:6px 12px;border-radius:6px}
+#status.error{border-color:#f55;color:#f99}
+#status[hidden],#help[hidden]{display:none}
+#help{position:fixed;inset:48px 10% 24px;z-index:25;background:var(--panel);border:1px solid var(--line);border-radius:8px;display:flex;flex-direction:column}
+#help-close{align-self:flex-end;margin:6px}
+#help-body{flex:1;overflow:auto;padding:0 18px 18px;outline:none}
 </style></head><body>
-<pre id="screen">Loading…</pre>
+<div id="bar">
+  <h1>AlienHack</h1>
+  <button id="btn-help" title="The game guide">Help</button>
+  <button id="btn-file" title="Save file, new game">File ▾</button>
+  <span class="sep"></span>
+  <button id="btn-layout">Windows ▾</button>
+  <select id="font" title="Text font (all windows but the map)"><option value="">Default font</option></select>
+  <button id="btn-audio" title="Sound">Audio ▾</button>
+  <span class="hint"><kbd>H</kbd> explore <kbd>I</kbd> inventory <kbd>Enter</kbd> menu <kbd>?</kbd> help</span>
+</div>
+<div id="menu-file" hidden>
+  <button id="btn-export">Export save</button>
+  <button id="btn-import">Import save</button>
+  <hr>
+  <button id="btn-new">New game</button>
+</div>
+<div id="menu-audio" hidden>
+  <label><input type="checkbox" id="snd-fx"> Sound effects</label>
+  <label><input type="checkbox" id="snd-music"> Music</label>
+</div>
+<input type="file" id="import-file" hidden>
+<div id="game">
+  <div class="win" id="t-map"><div class="t"><span class="name">Map</span><select id="mapfont" title="Map font"><option value="">Default font</option></select></div><div class="body"><canvas id="map"></canvas><pre id="pop" class="txt" hidden></pre></div></div>
+  <div class="win" id="t-stat"><div class="t"><span class="name">Status</span></div><pre class="body txt" id="stat"></pre></div>
+  <div class="win" id="t-inv"><div class="t"><span class="name">Inventory</span></div><pre class="body txt" id="inv"></pre></div>
+  <div class="win" id="t-vis"><div class="t"><span class="name">Visible</span></div><div class="body wm-list" id="vis"></div></div>
+  <div class="win" id="t-msg"><div class="t"><span class="name">Messages</span></div><div class="body wm-list" id="msg"></div></div>
+  <div class="win" id="t-screen"><div class="t"><span class="name">Screen</span></div><div class="body"><canvas id="screen"></canvas></div></div>
+</div>
+<div id="status" hidden></div>
+<div id="help" hidden><button id="help-close">Close</button><div id="help-body" tabindex="-1"></div></div>
+<script src="../rvip-wm.js"></script>
+<script src="../rvip-app.js"></script>
 <script>
-// Stage-1 page: shows the game's 80x40 console grid as HTML text. Windows come in stage 5.
-var PAL=['#000','#a00','#0a0','#00a','#a50','#0aa','#a0a','#aaa','#f55','#5f5','#55f','#ff5','#5ff','#f5f','#fff'];
-function esc(c){return c=='&'?'&amp;':c=='<'?'&lt;':c=='>'?'&gt;':c;}
-var Module={rvipKeys:[],
- rvipScreen:function(ch,fg,bg,w,h){var out=[];for(var y=0;y<h;y++){var line='',cur=null,run='';
-  for(var x=0;x<w;x++){var i=y*w+x,c=ch[i]?String.fromCharCode(ch[i]):' ',f=fg[i]<0?7:fg[i],b=bg[i]<0?0:bg[i],k=f+','+b;
-   if(k!==cur){if(cur!==null)line+=run+'</span>';var p=cur=k;line+='<span style="color:'+PAL[f]+(b?';background:'+PAL[b]:'')+'">';run='';}
-   run+=esc(c);}
-  line+=run+'</span>';out.push(line);}
-  document.getElementById('screen').innerHTML=out.join('\n');}};
-var KEYS={ArrowUp:0x148,ArrowDown:0x150,ArrowLeft:0x14b,ArrowRight:0x14d,Home:0x147,PageUp:0x149,End:0x14f,PageDown:0x151,
- Enter:13,Escape:27,Backspace:8,Tab:9};
-var PAD={Numpad0:'0',Numpad1:'1',Numpad2:'2',Numpad3:'3',Numpad4:'4',Numpad5:'5',Numpad6:'6',Numpad7:'7',Numpad8:'8',Numpad9:'9',
- NumpadDecimal:'.',NumpadAdd:'+',NumpadSubtract:'-',NumpadMultiply:'*'};
-document.addEventListener('keydown',function(e){var k=KEYS[e.key];
- if(PAD[e.code]&&!e.ctrlKey&&!e.metaKey)k=0x200|PAD[e.code].charCodeAt(0);
- else if(e.ctrlKey&&!e.metaKey&&!e.altKey&&/^[a-zA-Z]$/.test(e.key)&&'wWtTnN'.indexOf(e.key)<0)k=0x400|e.key.toLowerCase().charCodeAt(0);
- if(k===undefined&&e.key.length===1&&!e.ctrlKey&&!e.metaKey)k=e.key.charCodeAt(0)&0xff;
- if(k===undefined)return;e.preventDefault();Module.rvipKeys.push(k);});
+'use strict';
+function $(id) { return document.getElementById(id); }
+var DIR = RvipApp.dir, LAYOUT = DIR + '/web-layout.json', SAVES = ['save.txt', 'quick.txt'];
+var L = {}, wm = null, inGame = false, atCmd = false;
+var PAL = ['#000', '#a00', '#0a0', '#00a', '#a50', '#0aa', '#a0a', '#aaa', '#f55', '#5f5', '#55f', '#ff5', '#5ff', '#f5f', '#fff'];
+function pal() { return Module.rvipPalette || PAL; }
+
+/* ---- saves, app buttons ---- */
+function savePaths() { return SAVES.map(function (f) { return DIR + '/' + f; }).filter(function (p) { return Module.FS.analyzePath(p).exists; }); }
+var app = RvipApp({
+  name: 'alienhack',
+  save: function () { var p = savePaths(); return p.length ? (p.length === 1 ? p[0] : p) : null; },
+  clear: function () { savePaths().forEach(function (p) { Module.FS.unlink(p); }); },
+  put: function (file, data) {
+    var n = file.name.split('/').pop();
+    if (SAVES.indexOf(n) < 0) return 'A save file is save.txt (long game) or quick.txt (quick game).';
+    Module.FS.writeFile(DIR + '/' + n, data);
+  },
+  noSave: 'There is no saved game yet (the game saves when you press S, and by itself after every floor change).',
+  helpText: 'Press ? in the game for its own help.'
+});
+function saveLayout() {
+  try { Module.FS.writeFile(LAYOUT, JSON.stringify(L)); app.sync(); } catch (e) { /* not mounted yet */ }
+}
+setInterval(function () { if (app.running) app.sync(); }, 15000);
+document.addEventListener('visibilitychange', function () { if (document.hidden && app.running) app.sync(); });
+window.addEventListener('pagehide', function () { if (app.running) app.sync(); });
+window.addEventListener('beforeunload', function (e) { if (app.running && inGame) { app.sync(); e.preventDefault(); e.returnValue = ''; } });
+
+/* ---- fonts ---- */
+RvipWM.fontOptions($('font')); RvipWM.fontOptions($('mapfont'));
+var loaded = {};
+function loadFont(n) {
+  if (!n) return Promise.resolve();
+  if (!loaded[n]) loaded[n] = new FontFace(n, 'url(../fonts/' + n + '.woff)').load().then(function (f) { document.fonts.add(f); }).catch(function () {});
+  return loaded[n];
+}
+function applyFonts() {
+  document.documentElement.style.setProperty('--face', L.face ? '"' + L.face + '", ui-monospace, Menlo, monospace' : 'ui-monospace, Menlo, monospace');
+  $('font').value = L.face || ''; $('mapfont').value = L.mapFace || '';
+  Promise.all([loadFont(L.face), loadFont(L.mapFace)]).then(function () { drawMap(); drawScreen(); });
+}
+[['font', 'face'], ['mapfont', 'mapFace']].forEach(function (p) {
+  var s = $(p[0]);
+  s.addEventListener('mousedown', function (e) { e.stopPropagation(); });
+  s.addEventListener('keydown', function (e) { e.stopPropagation(); });
+  s.onchange = function () { L[p[1]] = s.value; applyFonts(); saveLayout(); s.blur(); };
+});
+RvipWM.dropdown($('btn-file'), $('menu-file'));
+RvipWM.dropdown($('btn-audio'), $('menu-audio'));
+['btn-help', 'btn-file', 'btn-audio', 'btn-layout'].forEach(function (id) { $(id).addEventListener('mousedown', function (e) { e.preventDefault(); }); });
+[['snd-fx', 'sfx'], ['snd-music', 'music']].forEach(function (p) {
+  var c = $(p[0]); c.onchange = function () { L[p[1]] = c.checked; saveLayout(); };
+});
+
+/* ---- text panes: lines with "\x01<fg><bg>" colour marks (from the game) ---- */
+function esc(t) { return t.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+function colourText(s) {
+  var P = pal(), out = '', parts = s.split('\x01');
+  out += esc(parts[0]);
+  for (var i = 1; i < parts.length; i++) {
+    var p = parts[i], f = p.charCodeAt(0) - 97, b = p.charCodeAt(1) - 97, t = p.slice(2);
+    if (!t) continue;
+    out += '<span style="color:' + P[f] + (b > 0 ? ';background:' + P[b] : '') + '">' + esc(t) + '</span>';
+  }
+  return out;
+}
+function setText(el, s) { if (el._s === s) return; el._s = s; el.innerHTML = colourText(s); }
+
+/* ---- map: the game's world view (40x33, centred on the player by the game) ---- */
+var map = null;
+function mapFont(px) { return px + 'px ' + (L.mapFace ? '"' + L.mapFace + '", ' : '') + 'ui-monospace, Menlo, monospace'; }
+function cellFor(px) {
+  var c = $('map').getContext('2d'); c.font = mapFont(px);
+  return { w: Math.max(1, Math.ceil(c.measureText('M').width)), h: Math.max(1, Math.round(px * 1.2)), px: px };
+}
+function mapPx() {
+  var z = wm && wm.zoomed('map');
+  if (z) return z;
+  var b = $('t-map').querySelector('.body'), w = b.clientWidth, h = b.clientHeight;
+  if (!map) return 13;
+  var px = 8, c;
+  for (var p = 8; p <= 40; p++) { c = cellFor(p); if (c.w * map.w <= w && c.h * map.h <= h) px = p; else break; }
+  return px;
+}
+function drawGrid(cv, g, cell) {
+  var P = pal(), ctx = cv.getContext('2d');
+  cv.width = g.w * cell.w; cv.height = g.h * cell.h;
+  ctx.fillStyle = '#000'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.font = cell.font; ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+  for (var y = 0; y < g.h; y++) for (var x = 0; x < g.w; x++) {
+    var i = y * g.w + x, ch = g.ch[i], b = g.bg[i];
+    if (b > 0) { ctx.fillStyle = P[b]; ctx.fillRect(x * cell.w, y * cell.h, cell.w, cell.h); }
+    if (ch > 32) { ctx.fillStyle = P[g.fg[i] < 0 ? 7 : g.fg[i]] || '#aaa'; ctx.fillText(String.fromCharCode(ch), x * cell.w + cell.w / 2, y * cell.h + cell.h / 2 + 1); }
+  }
+}
+function drawMap() {
+  if (!map || !wm || !wm.shown('map')) return;
+  var cv = $('map'), c = cellFor(mapPx()); c.font = mapFont(c.px);
+  drawGrid(cv, map, c);
+  RvipWM.center(cv, cv.width / 2, cv.height / 2, cv.width, cv.height);   /* the game keeps the player in the middle */
+}
+/* one-window mode: the game's whole 80x40 screen, scaled to the window keeping its aspect */
+var scr = null;
+function drawScreen() {
+  if (!scr || !wm || !wm.shown('screen')) return;
+  var b = $('t-screen').querySelector('.body'), best = 6;
+  for (var p = 6; p <= 48; p++) { var c = cellFor(p); c.font = mapFont(p); if (c.w * scr.w <= b.clientWidth && c.h * scr.h <= b.clientHeight) best = p; else break; }
+  var cell = cellFor(best); cell.font = mapFont(best);
+  drawGrid($('screen'), scr, cell);
+}
+
+/* ---- the game's hooks ---- */
+var lastMsg = null;
+var Module = {
+  rvipKeys: [],
+  rvipScreen: function (ch, fg, bg, w, h) { scr = { ch: ch.slice(), fg: fg.slice(), bg: bg.slice(), w: w, h: h }; drawScreen(); },
+  rvipMap: function (ch, fg, bg, w, h) { map = { ch: ch, fg: fg, bg: bg, w: w, h: h }; drawMap(); },
+  rvipPanes: function (status, info, popup, cmd, based) {
+    atCmd = cmd;
+    inGame = based;
+    if (based) { setText($('stat'), status); RvipWM.prompt.text(info.replace(/\x01../g, '')); }
+    var pop = $('pop');
+    if (popup) {
+      pop.hidden = false; pop.style.setProperty('--popfs', RvipWM.fontSize('msg') + 'px');
+      pop.style.fontSize = RvipWM.fontSize('msg') + 'px';
+      setText(pop, popup); RvipWM.popup(pop, { center: !based });
+    } else if (!pop.hidden) { pop.hidden = true; }
+  },
+  rvipPane: function (id, s) {
+    if (id === 'inv') setText($('inv'), s);
+    else if (id === 'vis') RvipWM.visible($('vis'), s);
+  },
+  rvipMsg: function (t, fresh) {
+    if (fresh || lastMsg === null) { lastMsg = t; RvipWM.log($('msg'), t); }
+    else { lastMsg += ' ' + t; RvipWM.log($('msg'), lastMsg, true); }
+  },
+  rvipPoll: function () { RvipWM.prompt.wait(atCmd); },
+  rvipSync: function () { app.sync(); },
+  rvipEnd: function () { app.running = false; inGame = false; app.status('Game over. Starting again…'); app.sync(function () { setTimeout(function () { location.reload(); }, 1000); }); },
+  preRun: [function () {
+    Module.addRunDependency('idbfs');
+    RvipApp.mount(function () {
+      var F = Module.FS;
+      try { L = JSON.parse(new TextDecoder().decode(F.readFile(LAYOUT))) || {}; } catch (e) { L = {}; }
+      ['keys.txt', 'ah_readme.txt'].forEach(function (f) {   /* the game reads its data from its folder */
+        try { F.unlink(DIR + '/' + f); } catch (e) { /* none yet */ }
+        F.symlink('/ahdata/' + f, DIR + '/' + f);
+      });
+      F.chdir(DIR);
+      startWM();
+      Module.removeRunDependency('idbfs');
+    });
+  }],
+  onRuntimeInitialized: function () { app.running = true; },
+  onAbort: function (e) { app.crashed(e); },
+  print: function (t) { console.log(t); }, printErr: function (t) { console.warn(t); }
+};
+
+function startWM() {
+  $('snd-fx').checked = !!L.sfx; $('snd-music').checked = !!L.music;
+  wm = RvipWM({
+    area: $('game'), menu: $('btn-layout'),
+    wins: [{ id: 'map', title: 'Map' }, { id: 'stat', title: 'Status' }, { id: 'inv', title: 'Inventory' },
+      { id: 'vis', title: 'Visible' }, { id: 'msg', title: 'Messages' }, { id: 'screen', title: 'Whole screen' }],
+    multi: { d: 'h', r: 0.58, a: { d: 'v', r: 0.74, a: 'map', b: 'msg' }, b: { d: 'v', r: 0.42, a: 'stat', b: { d: 'v', r: 0.5, a: 'inv', b: 'vis' } } },
+    single: 'screen',
+    state: L.wm || null,
+    save: function (s) { L.wm = s; saveLayout(); },
+    layout: function () { drawMap(); drawScreen(); var p = $('pop'); if (!p.hidden) RvipWM.popup(p, {}); },
+    zoom: { map: function () { drawMap(); } },
+    size: { map: function () { return mapPx(); } },
+    fontMax: { map: 40 },
+    noFont: 'screen'
+  });
+  wm.apply();
+  applyFonts();
+}
+
+/* ---- keys ---- */
+var KEYS = { ArrowUp: 0x148, ArrowDown: 0x150, ArrowLeft: 0x14b, ArrowRight: 0x14d, Home: 0x147, PageUp: 0x149, End: 0x14f, PageDown: 0x151,
+  Enter: 13, Escape: 27, Backspace: 8, Tab: 9 };
+var PAD = { Numpad0: '0', Numpad1: '1', Numpad2: '2', Numpad3: '3', Numpad4: '4', Numpad5: '5', Numpad6: '6', Numpad7: '7', Numpad8: '8', Numpad9: '9',
+  NumpadDecimal: '.', NumpadAdd: '+', NumpadSubtract: '-', NumpadMultiply: '*' };
+document.addEventListener('keydown', function (e) {
+  if (!app.running || /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)) return;
+  var k = KEYS[e.key];
+  if (PAD[e.code] && !e.ctrlKey && !e.metaKey) k = 0x200 | PAD[e.code].charCodeAt(0);
+  else if (e.ctrlKey && !e.metaKey && !e.altKey && /^[a-zA-Z]$/.test(e.key) && 'wWtTnN'.indexOf(e.key) < 0) k = 0x400 | e.key.toLowerCase().charCodeAt(0);
+  if (k === undefined && e.key.length === 1 && !e.ctrlKey && !e.metaKey) k = e.key.charCodeAt(0) & 0xff;
+  if (k === undefined) return;
+  e.preventDefault(); Module.rvipKeys.push(k);
+});
 </script>
 <script src="alienhack.js"></script>
 </body></html>

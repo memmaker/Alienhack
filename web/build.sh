@@ -25,8 +25,10 @@ done
 # compile stale objects in parallel
 ls $OBJ/*.src >/dev/null 2>&1 && ls $OBJ/*.src | sed 's/\.src$//' | xargs -P $(nproc) -n 1 sh -c 'em++ -c $(cat $1.src) -o $1 '"$CXXFLAGS"' -I'"$DEPS"'/filesystem/src && rm $1.src' _
 mkdir -p $WEB/pkg && cp $ROOT/keys.txt $ROOT/ah_readme.txt $WEB/pkg/
-em++ $OBJS -o $WEB/alienhack.js ${OPT:--O2} -fexceptions -sUSE_BOOST_HEADERS=1 ${SAN:+-fsanitize=address} \
+mkdir -p $WEB/dist
+em++ $OBJS -o $WEB/dist/alienhack.js ${OPT:--O2} -fexceptions -sUSE_BOOST_HEADERS=1 ${SAN:+-fsanitize=address} \
   -sASYNCIFY -sASYNCIFY_STACK_SIZE=65536 -sSTACK_SIZE=1048576 -sALLOW_MEMORY_GROWTH -sINITIAL_MEMORY=64MB \
   -sEXPORTED_RUNTIME_METHODS=FS,IDBFS,HEAPU8,HEAP8 -sFORCE_FILESYSTEM -lidbfs.js -sENVIRONMENT=web \
-  --preload-file $WEB/pkg@/ $LDEXTRA
-echo built $WEB/alienhack.js
+  --preload-file $WEB/pkg@/ahdata $LDEXTRA
+cp $WEB/index.html $WEB/dist/
+echo built $WEB/dist

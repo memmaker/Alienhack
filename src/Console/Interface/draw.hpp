@@ -55,6 +55,11 @@ namespace AlienHack
 	void drawZoneName( RL_shared::Console&, const AHGameModel&, 
 			RL_shared::DBKeyValue focus_zone, bool red );
 
+	class AHGameObject;
+	// RVIP (web windows): glyph + colour (Console::Colour) of an object / a pickup type
+	char rvipObjectGlyph( const AHGameObject&, int* colour );
+	char rvipPickupGlyph( int pickup_type, int* colour );
+
 	void writeSelectedItems(
 			RL_shared::Console&, const AHGameModel&, 
 			RL_shared::DBKeyValue focus_zone, 

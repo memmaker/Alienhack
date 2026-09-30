@@ -46,6 +46,25 @@ index b4fe13c..f48bd5a 100644
  class GameModel;
  
  
+diff --git a/Messages/Console/MessageDisplay.cpp b/Messages/Console/MessageDisplay.cpp
+index 52b062e..21f096b 100644
+--- a/Messages/Console/MessageDisplay.cpp
++++ b/Messages/Console/MessageDisplay.cpp
+@@ -24,8 +24,14 @@ void MessageDisplay::setWindow( const WindowParams& params )
+ }
+ 
+ 
++#ifdef __EMSCRIPTEN__
++extern "C" void rvip_msg( const char* text, int fresh );	// web: Messages window (RVIP stage 5)
++#endif
+ void MessageDisplay::addString( const char * msg )
+ {
++#ifdef __EMSCRIPTEN__
++	rvip_msg( msg, m_new_msg ? 0 : 1 );
++#endif
+ 	m_msgs.addMessage( UserMessageLog::Msg( msg ) );
+ 	m_new_msg = true;
+ }
 diff --git a/Messages/Console/MessageDisplay.hpp b/Messages/Console/MessageDisplay.hpp
 index dae53c9..7a7d64b 100644
 --- a/Messages/Console/MessageDisplay.hpp

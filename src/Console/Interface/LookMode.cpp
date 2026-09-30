@@ -1,3 +1,4 @@
+#include "RvipMenus.hpp"
 #include "LookMode.hpp"
 #include "draw.hpp"
 #include "../../Model/AHGameModel.hpp"
@@ -213,6 +214,9 @@ void LookMode::draw( AOutputWindow& window, AGameModel& in_model ) const
 	const OverWorld& overworld( model.overworld() );
 
 	console.clearScreen();
+#ifdef __EMSCRIPTEN__
+	RvipBase rvip_base_guard( false );	// map + HUD + info rows go to their windows
+#endif
 	drawFrame(console, model.isCountdownActive());
 
 	{

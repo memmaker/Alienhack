@@ -1,6 +1,4 @@
 deps/
 obj*/
 pkg/
-alienhack.js
-alienhack.wasm
-alienhack.data
+dist/

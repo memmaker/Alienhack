@@ -337,3 +337,101 @@ void InventoryMenu::draw( AOutputWindow& window, AGameModel& ) const
 }
 
 }
+
+#ifdef __EMSCRIPTEN__
+#include "draw.hpp"
+#include "World-2DTiles/World.hpp"
+#include "World-2DTiles/Zone.hpp"
+#include "../../Model/Objects/ObjectType.hpp"
+#include <boost/foreach.hpp>
+extern "C" void rvip_pane( const char* id, const char* text );   // web/Console-web.cpp
+extern "C" const char* rvip_css( int colour );
+
+namespace AlienHack
+{
+
+// RVIP stage 5: the Inventory and Visible windows, built from the game's data at the
+// command prompt (PlayingGame::draw). Inventory rows "a) <glyph> name" in the item's
+// colour ("\x01<fg><bg>" = colour of the text after it); Visible = RvipWM.visible lines.
+void rvipSidePanes( const AHGameModel& model, const IFunctionMap& keys )
+{
+	static std::string last_inv("\x02"), last_vis("\x02");   // sentinels: an empty list is sent too
+	const World& world( model.world() );
+	if (!world.objectExists(model.avatar())) return;
+	const PlayerCharacter& pc( dynamic_cast<const PlayerCharacter&>( world.object( model.avatar() ) ) );
+	shared_ptr< const IFunctionMap::FunctionToControlsMap > map( keys.getFunctions() );
+
+	std::string inv;
+	struct Row
+	{
+		std::string& out; const IFunctionMap::FunctionToControlsMap& m;
+		Row( std::string& o, const IFunctionMap::FunctionToControlsMap& mm ) : out(o), m(mm) {}
+		void operator()( const char* fn, char glyph, int col, const std::string& name )
+		{
+			IFunctionMap::FunctionToControlsMap::const_iterator it( m.find(fn) );
+			std::string k( ((m.end() != it) && !it->second.empty() && (1 == it->second.front().length())) ? it->second.front() : " " );
+			out += "\x01ha" + k + ") \x01"; out += (char)('a' + col); out += 'a'; out += glyph; out += " " + name + "\n";
+		}
+	} row( inv, *map );
+	int col;
+	char g;
+	if (world.objectExists(pc.armour()))
+	{
+		const AHGameObject& o( dynamic_cast<const AHGameObject&>(world.object(pc.armour())) );
+		g = rvipObjectGlyph(o, &col);
+		row("Armour", g, col, dynamic_cast<const Armour&>(o).getSelectName(true));
+	}
+	for (int s = 0; s < 2; ++s)
+	{
+		PlayerCharacter::WeaponSlot slot = (PlayerCharacter::WeaponSlot)s;
+		if (!world.objectExists(pc.weapon(slot))) continue;
+		const AHGameObject& o( dynamic_cast<const AHGameObject&>(world.object(pc.weapon(slot))) );
+		g = rvipObjectGlyph(o, &col);
+		row(s ? "Primary" : "Sidearm", g, col, dynamic_cast<const Weapon&>(o).getSelectName(true) + ((pc.currentWeapon() == slot) ? " (in hand)" : ""));
+	}
+	static const struct { pickup::Type t; const char* fn; const char* name; } pk[] = {
+		{ pickup::FragGrenade, "Frag", "Frag grenades" }, { pickup::KrakGrenade, "Krak", "Krak grenades" },
+		{ pickup::StunGrenade, "Stun", "Stun grenades" }, { pickup::IncGrenade, "Inc", "Inc grenades" },
+		{ pickup::Medkit, "Medkit", "Medkits" }, { pickup::Neutraliser, "Neutraliser", "Neutraliser" },
+		{ pickup::DemoCharge, "Demolition", "Demolition charges" },
+	};
+	for (size_t i = 0; i < sizeof pk / sizeof pk[0]; ++i)
+	{
+		int n = pc.num(pk[i].t);
+		if (n <= 0) continue;
+		g = rvipPickupGlyph(pk[i].t, &col);
+		row(pk[i].fn, g, col, std::string(pk[i].name) + " x" + std::to_string(n));
+	}
+	while (!inv.empty() && '\n' == inv[inv.length()-1]) inv.erase(inv.length()-1);
+	if (inv != last_inv) { last_inv = inv; rvip_pane("inv", inv.c_str()); }
+
+	// Visible: aliens, then items, in view (nearest first)
+	const WorldObject::WorldLocation loc( pc.location() );
+	const Zone& zone( world.zone( loc.zone ) );
+	std::vector< std::pair<int, std::string> > mons, items;
+	for (int z=0; z < zone.sizeZ(); ++z)
+		for (int x=0; x < zone.sizeX(); ++x)
+		{
+			if (!model.isVisible(loc.zone, x, z)) continue;
+			int d = (x-loc.x)*(x-loc.x) + (z-loc.z)*(z-loc.z);
+			BOOST_FOREACH( DBKeyValue ok, zone.objectsAt(x, z) )
+			{
+				if ((ok == model.avatar()) || !world.objectExists(ok)) continue;
+				const AHGameObject& o( dynamic_cast< const AHGameObject& >( world.object(ok) ) );
+				bool mon = (objects::Alien == o.type());
+				if (!mon && (objects::Pickup != o.type()) && (objects::Armour != o.type()) && (objects::Weapon != o.type())) continue;
+				if (!o.shouldDraw()) continue;
+				g = rvipObjectGlyph(o, &col);
+				std::string l( std::string(mon ? "M" : "I") + g + o.getSelectName(false) + "\t" + rvip_css(col) );
+				(mon ? mons : items).push_back( std::make_pair(d, l) );
+			}
+		}
+	std::stable_sort(mons.begin(), mons.end()); std::stable_sort(items.begin(), items.end());
+	std::string vis;
+	for (size_t i = 0; i < mons.size(); ++i) vis += mons[i].second + "\n";
+	for (size_t i = 0; i < items.size(); ++i) vis += items[i].second + "\n";
+	if (vis != last_vis) { last_vis = vis; rvip_pane("vis", vis.c_str()); }
+}
+
+}
+#endif

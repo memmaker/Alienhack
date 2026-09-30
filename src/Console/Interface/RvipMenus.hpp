@@ -13,6 +13,19 @@ namespace RL_shared { class IFunctionMap; }
 
 extern "C" { extern int rvip_next_key; extern bool rvip_numpad_raw; }
 
+#ifdef __EMSCRIPTEN__
+// RVIP stage 5 (web/Console-web.cpp): cells drawn while rvip_base > 0 are the main
+// screen (Map, Status, prompt line); others drawn over it form the pop-up.
+extern "C" { extern int rvip_base; extern bool rvip_main_screen; void rvip_sync(void); }
+struct RvipBase
+{
+	explicit RvipBase( bool main_screen ) { ++rvip_base; if (main_screen) rvip_main_screen = true; }
+	~RvipBase() { --rvip_base; }
+};
+namespace RL_shared { class IFunctionMap; }
+namespace AlienHack { class AHGameModel; void rvipSidePanes( const AHGameModel&, const RL_shared::IFunctionMap& ); }
+#endif
+
 namespace AlienHack
 {
 

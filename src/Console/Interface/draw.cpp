@@ -164,6 +164,52 @@ DrawItem getObjectItemRepresentation(WorldObjectType object, bool visible)
 	return DrawItem(' ', Console::Grey);
 }
 
+// RVIP: pickup glyphs by type (also for the web Inventory window, whose grenades etc. are counts)
+static bool pickupDrawItem(int type, DrawItem* out)
+{
+			switch( type )
+			{
+				case pickup::Medkit:
+					{ *out = DrawItem('+', Console::BrightRed); return true; }
+				case pickup::Neutraliser: 
+					{ *out = DrawItem('!', Console::BrightCyan); return true; }
+				case pickup::Ammo_9mm:
+					{ *out = DrawItem('|', Console::Grey); return true; }
+				case pickup::Ammo_shotgun: 
+					{ *out = DrawItem('|', Console::Yellow); return true; }
+				case pickup::Ammo_colt: 
+					{ *out = DrawItem('|', Console::White); return true; }
+				case pickup::Ammo_pulse:
+					{ *out = DrawItem('|', Console::Cyan); return true; }
+				case pickup::Ammo_flame:
+					{ *out = DrawItem('|', Console::BrightRed); return true; }
+				case pickup::Ammo_smartgun:
+					{ *out = DrawItem('|', Console::BrightCyan); return true; }
+				case pickup::Ammo_laser:
+					{ *out = DrawItem('|', Console::Magenta); return true; }
+				case pickup::Ammo_HEDP30mm:
+					{ *out = DrawItem('|', Console::Green); return true; }
+				case pickup::StunGrenade:
+					{ *out = DrawItem('*', Console::BrightCyan); return true; }
+				case pickup::FragGrenade:
+					{ *out = DrawItem('*', Console::Grey); return true; }
+				case pickup::IncGrenade:
+					{ *out = DrawItem('*', Console::BrightYellow); return true; }
+				case pickup::KrakGrenade:
+					{ *out = DrawItem('*', Console::Magenta); return true; }
+				case pickup::MotionTracker:
+					{ *out = DrawItem('?', Console::BrightCyan); return true; }
+				case pickup::CreditChip:
+					{ *out = DrawItem('$', Console::Yellow); return true; }
+				case pickup::MegaCredChip:
+					{ *out = DrawItem('$', Console::BrightYellow); return true; }
+				case pickup::DemoCharge:
+					{ *out = DrawItem('*', Console::Green); return true; }
+				default:;
+			}
+	return false;
+}
+
 DrawItem getObjectItemRepresentation(const AHGameObject& object, bool red_light)
 {
 	switch (object.type())
@@ -220,46 +266,9 @@ DrawItem getObjectItemRepresentation(const AHGameObject& object, bool red_light)
 		case objects::Pickup:
 		{
 			const Pickup& pickup( dynamic_cast<const Pickup&>(object) );
-			switch( pickup.pickupType() )
-			{
-				case pickup::Medkit:
-					return DrawItem('+', Console::BrightRed);
-				case pickup::Neutraliser: 
-					return DrawItem('!', Console::BrightCyan);
-				case pickup::Ammo_9mm:
-					return DrawItem('|', Console::Grey);
-				case pickup::Ammo_shotgun: 
-					return DrawItem('|', Console::Yellow);
-				case pickup::Ammo_colt: 
-					return DrawItem('|', Console::White);
-				case pickup::Ammo_pulse:
-					return DrawItem('|', Console::Cyan);
-				case pickup::Ammo_flame:
-					return DrawItem('|', Console::BrightRed);
-				case pickup::Ammo_smartgun:
-					return DrawItem('|', Console::BrightCyan);
-				case pickup::Ammo_laser:
-					return DrawItem('|', Console::Magenta);
-				case pickup::Ammo_HEDP30mm:
-					return DrawItem('|', Console::Green);
-				case pickup::StunGrenade:
-					return DrawItem('*', Console::BrightCyan);
-				case pickup::FragGrenade:
-					return DrawItem('*', Console::Grey);
-				case pickup::IncGrenade:
-					return DrawItem('*', Console::BrightYellow);
-				case pickup::KrakGrenade:
-					return DrawItem('*', Console::Magenta);
-				case pickup::MotionTracker:
-					return DrawItem('?', Console::BrightCyan);
-				case pickup::CreditChip:
-					return DrawItem('$', Console::Yellow);
-				case pickup::MegaCredChip:
-					return DrawItem('$', Console::BrightYellow);
-				case pickup::DemoCharge:
-					return DrawItem('*', Console::Green);
-				default:;
-			}
+			DrawItem d(' ', Console::Grey);
+			if (pickupDrawItem(pickup.pickupType(), &d))
+				return d;
 			break;
 		}
 		case objects::Armour:
@@ -1213,6 +1222,9 @@ void writeSelectedItems(
 }
 
 
+#ifdef __EMSCRIPTEN__
+extern std::string rvip_zone_name;   // web/Console-web.cpp: first line of the Status window
+#endif
 void drawZoneName( RL_shared::Console& console, const AHGameModel& model, DBKeyValue focus_zone, bool inred )
 {
 	const OverWorld& overworld( model.overworld() );
@@ -1232,6 +1244,13 @@ void drawZoneName( RL_shared::Console& console, const AHGameModel& model, DBKeyV
 
 	console.drawText(block_name_start, WORLD_VIEW_Y_LOW-1, block_name.c_str(), inred ? Console::Red : Console::Green);
 	console.drawText(floor_name_start, WORLD_VIEW_Y_HI+1, floor_name.c_str(), inred ? Console::Red : Console::Green);
+#ifdef __EMSCRIPTEN__
+	{	// RVIP: "\x01<fg><bg>" sets the colour of the text after it
+		std::string fl( floor_names[bnf.floor] );
+		rvip_zone_name = std::string("\x01") + (char)('a' + (inred ? Console::BrightRed : Console::BrightGreen)) + 'a'
+			+ overworld.blockName(bnf.block) + ", " + fl.substr(1, fl.length() - 2);
+	}
+#endif
 }
 
 
@@ -1433,4 +1452,22 @@ void drawWorld(
 }
 
 
+}
+
+namespace AlienHack
+{
+// RVIP (web windows): an object's / a pickup type's own glyph and colour
+char rvipObjectGlyph( const AHGameObject& object, int* colour )
+{
+	DrawItem d( getObjectItemRepresentation(object, false) );
+	*colour = d.fore;
+	return d.chr;
+}
+char rvipPickupGlyph( int type, int* colour )
+{
+	DrawItem d(' ', Console::Grey);
+	pickupDrawItem(type, &d);
+	*colour = d.fore;
+	return d.chr;
+}
 }

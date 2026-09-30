@@ -79,6 +79,35 @@
 - Tested (Playwright headless): menu layout, choose by arrows+numpad 5 and by key (`l`), inventory
   cursor, item menu drop + reopen, numpad * examine, Ctrl+a, drop prompt `t`, forwarded `f` → target.
 
+### Stage 5 — Web page and windows (done, cloud run; not deployed)
+- Page `web/index.html` (copied to `web/dist/` by `build.sh`, which now writes
+  `web/dist/alienhack.{js,wasm,data}`; data preloaded at `/ahdata`). Loads `../rvip-wm.js`,
+  `../rvip-app.js` (shared copies live in the `rvip` repo `web/`; no rvip-tools repo reachable).
+  Top bar: Help · File ▾ | Windows ▾ · Font · Audio ▾ (no Tiles), hints H / I / Enter / ?.
+- Windows: Map (canvas, the game's 40x33 world view; the game centres it on the player),
+  Status (zone name + HUD), Inventory, Visible, Messages; "Whole screen" = one-window mode
+  (the native 80x40 screen on a canvas, aspect kept). Map font select on its title bar.
+- Routing in `web/Console-web.cpp`: cells drawn inside `RvipBase` (PlayingGame / LookMode /
+  TargetSelect ::draw) are the main screen: Map = x2..41 y1..33, Status = x45..77 y1..19,
+  prompt line = look/target info rows 35..38; cells drawn over it (dialogs, menus) = pop-up
+  (their bounding box); screens without a main screen (title, story, help, char) = pop-up of
+  all non-blank cells. Text panes use `\x01<fg><bg>` colour marks ('a'+Console::Colour),
+  palette sent from C (`rvip_css`). Messages via `MessageDisplay::addString` hook
+  (rl-shared.patch; same-turn messages join one line). Inventory/Visible built from game
+  data in `RvipMenus.cpp rvipSidePanes()`; glyphs via `draw.cpp rvipObjectGlyph/rvipPickupGlyph`.
+- Saves: IDBFS at `RvipApp.dir` (`/alienhack` on the site), cwd = that folder, keys.txt and
+  ah_readme.txt symlinked from `/ahdata` each start. `saveGame` is atomic (`.tmp` + rename) and
+  syncs. Autosave (the game deletes its save on load): at the first idle command prompt after
+  start/load and after every floor change; deleted when the run ends unless the player saved (S).
+  Layout/fonts/audio flags in `web-layout.json` there. S and death return to the game's own
+  title (no reload); `Module.rvipEnd` (main returning) syncs and reloads as fallback.
+- Tested (Playwright headless): title → story → map, all windows filled, look mode prompt line,
+  Enter menu pop-up, one-window mode, autosave file appears, reload → Load → character back,
+  S save; shared smoke.cjs (bar, menus, A+ only one window, kept over reload, IDB `/alienhack`),
+  resize.cjs (no negative sizes), idbtest.cjs (no localStorage): no errors.
+- Open: no deploy / `web/deploy.sh` yet (cloud); death → new game not tested in the browser;
+  real look in the pane (Mac) still needed; sound checkboxes stored only (stage 6).
+
 ### Open
 - No deploy (cloud run). Mac check in the browser pane still to do (stage 1 + 2: watch explore painting).
 - Explore key interrupt not tested headless (Asyncify timing); explore not run on deep/dark floors.

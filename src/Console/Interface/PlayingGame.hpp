@@ -109,6 +109,12 @@ private:
 	bool isFn( const RL_shared::AUserInputItem& in, const char* fn ) const;
 	CommandResult interpretKey( const RL_shared::AUserInputItem&, RL_shared::AGameModel& );
 
+	// RVIP stage 5 (web): autosave once after start and after a floor change, at the
+	// next idle command prompt; the autosave is deleted when the game ends unless the
+	// player saved (S), since loading deletes the save.
+	bool m_rvip_save_due, m_rvip_player_saved;
+	std::string m_rvip_save_name;
+
 	void writeMortem( RL_shared::AGameModel& in_model );
 	void showMortem();
 };

@@ -476,6 +476,7 @@ PlayingGame::PlayingGame(
 , m_shown_mortem(false)
 , m_auto(0), m_is_cmd(false), m_child_opened(false), m_auto_zone(INVALID_KEY), m_auto_px(0), m_auto_pz(0), m_auto_tx(0), m_auto_tz(0)
 , m_auto_moved(false), m_auto_door(false), m_auto_aliens(0)
+, m_rvip_save_due(true), m_rvip_player_saved(false)
 {
 	ASSERT( m_key_map );
 }
@@ -812,7 +813,21 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 	std::string::size_type bar( m_cmd.find("|reopen") );
 	if (std::string::npos != bar) { reopen = true; m_cmd.erase(bar); }
 	m_child_opened = false;
+#ifdef __EMSCRIPTEN__
+	AHGameModel& am( dynamic_cast<AHGameModel&>(in_model) );
+	if (m_rvip_save_due && !m_quit && !rvip_auto_on && (rvip_next_key < 0) && am.world().objectExists(am.avatar()))
+	{	// idle command prompt: autosave (atomic, synced to IndexedDB by saveGame); no screen change
+		m_rvip_save_due = false;
+		m_rvip_save_name = getSaveFileName(am);
+		saveGame(am, m_rvip_save_name.c_str());
+	}
+	DBKeyValue zone_before( am.world().objectExists(am.avatar()) ? am.world().object(am.avatar()).location().zone : INVALID_KEY );
+#endif
 	CommandResult res( interpretKey( input, in_model ) );
+#ifdef __EMSCRIPTEN__
+	if (am.world().objectExists(am.avatar()) && (am.world().object(am.avatar()).location().zone != zone_before))
+		m_rvip_save_due = true;	// new floor: autosave at the next idle prompt
+#endif
 	m_is_cmd = false;
 	if (reopen && !m_child_opened && !m_quit)
 		rvipRunCommand("Inventory?");	// list reopens after the action unless an alien is in view
@@ -1405,6 +1420,7 @@ PlayingGame::CommandResult PlayingGame::interpretKey( const AUserInputItem& inpu
 	{
 		if (saveGame(model, getSaveFileName(model)))
 		{
+			m_rvip_player_saved = true;
 			m_quit = true;
 		}
 	}
@@ -1712,6 +1728,14 @@ void PlayingGame::notifyAHGameModelAdvance( RL_shared::AGameModel& in_model, RL_
 
 bool PlayingGame::finished(void)
 {
+#ifdef __EMSCRIPTEN__
+	if (m_quit && !m_rvip_player_saved && !m_rvip_save_name.empty())
+	{	// the run ended (death, win, explosion): the autosave must not bring it back
+		std::remove(m_rvip_save_name.c_str());
+		m_rvip_save_name.clear();
+		rvip_sync();
+	}
+#endif
 	return m_quit;
 }
 
@@ -1722,6 +1746,10 @@ void PlayingGame::draw( AOutputWindow& window, AGameModel& in_model ) const
 	const World& world( model.world() );
 
 	console.clearScreen();
+#ifdef __EMSCRIPTEN__
+	RvipBase rvip_base_guard( true );	// the main screen: routed to the Map/Status windows
+	rvipSidePanes( model, *m_key_map );
+#endif
 
 	drawFrame(console, model.isCountdownActive());
 

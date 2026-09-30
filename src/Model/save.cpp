@@ -4,6 +4,8 @@
 #include <boost/filesystem/operations.hpp>
 #include <boost/lexical_cast.hpp>
 #include <fstream>
+#include <cstdio>
+#include <string>
 
 
 
@@ -60,7 +62,27 @@ bool isSaveFile(const char * filename)
 }
 
 
+#ifdef __EMSCRIPTEN__
+extern "C" void rvip_sync(void);	// web/Console-web.cpp: IDBFS -> IndexedDB
+#endif
+
+static bool saveGameTo(AHGameModel& model, const char * filename);
+
+// Atomic: write <file>.tmp, then rename it over the old save; a failed write keeps the old save.
 bool saveGame(AHGameModel& model, const char * filename)
+{
+	std::string tmp( std::string(filename) + ".tmp" );
+	bool ok = false;
+	try { ok = saveGameTo(model, tmp.c_str()); } catch (...) { ok = false; }
+	if (ok) ok = (0 == std::rename(tmp.c_str(), filename));
+	if (!ok) std::remove(tmp.c_str());
+#ifdef __EMSCRIPTEN__
+	rvip_sync();
+#endif
+	return ok;
+}
+
+static bool saveGameTo(AHGameModel& model, const char * filename)
 {
 	std::ofstream ofs(filename);
 
@@ -75,6 +97,7 @@ bool saveGame(AHGameModel& model, const char * filename)
 
 		oa << model;
 
+		ofs.close();
 		return !ofs.fail();
 	}
 

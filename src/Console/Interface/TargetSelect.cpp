@@ -1,3 +1,4 @@
+#include "RvipMenus.hpp"
 #include "TargetSelect.hpp"
 #include "draw.hpp"
 #include "../../Model/AHGameModel.hpp"
@@ -172,6 +173,9 @@ void TargetSelect::draw( AOutputWindow& window, AGameModel& in_model ) const
 	WorldObject::WorldLocation loc( player_obj.location() );
 
 	console.clearScreen();
+#ifdef __EMSCRIPTEN__
+	RvipBase rvip_base_guard( false );	// map + HUD + info rows go to their windows
+#endif
 	drawFrame(console, model.isCountdownActive());
 	drawWorld(
 		console, model, loc.zone, 
