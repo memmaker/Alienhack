@@ -155,8 +155,12 @@
   it into ext key 3 + `rvip_click_row`; Enter menu runs the row, inventory opens the item menu (drop prompt:
   drops), item menu runs the action.
 - smoke.cjs, idbtest.cjs, resize.cjs: pass, no errors.
-- Open: explore not reached on a dark floor (`OverWorld::isDark`, vision 8) or deep floors in the pane
-  (the test hero died on the 1st floor); explore uses `isVisible`, so it should hold. Deploy by orchestrator.
+- Dark/deep floors (follow-up, temporary patch: every floor dark + no player damage, reverted): explore H
+  walks on dark Ground/1st/2nd floors (Block A), stops at items and aliens, a key press stops it; `>` + H
+  climbed to the 2nd floor. No code change needed. Note: the pane's `type "H"`/`shift+h` does not reach the
+  page as `H` (a real keydown with key `H` does): test bots push 72 to `Module.rvipKeys`.
+- One-window `<pre>` is centred in its window (padding set in `drawScreen`).
+- Open: deploy by orchestrator.
 ### Open
 - No deploy (cloud run). Mac check in the browser pane still to do (stage 1 + 2: watch explore painting).
 - Explore key interrupt not tested headless (Asyncify timing); explore not run on deep/dark floors.
