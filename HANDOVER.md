@@ -191,5 +191,11 @@
   `ev=win&name=winner%20x&depth=0`.
 - Open: deploy both repos; real death in the user's browser → graveyard.html; Mac killer-art rerun.
 
+### Mac: deploy (2026-09-30)
+- `web/deploy.sh` (zapm guard) added; built with `~/tools/emsdk/emsdk_env.sh`; game + roguelikes deployed.
+  og.py run (index now "48 classic roguelikes", shrine og block from the card text). Live md5 of
+  index.html/js/wasm/data/help.html = web/dist; og:image, card Info, tree ✦, `h1` → shrine all live.
+- Still open: Mac pane look, 375 px, screenshots, Menlo killer art, real death → graveyard.
+
 **RVIP complete** (stages 1–9) except: deploys (stages 5–9) and the Mac checks (pane look,
 375 px, screenshots, Menlo killer art).
