@@ -215,5 +215,14 @@
   index.html/js/wasm/data/help.html = web/dist; og:image, card Info, tree ✦, `h1` → shrine all live.
 - Still open: Mac pane look, 375 px, screenshots, Menlo killer art, real death → graveyard.
 
+### Mac: stage-6 follow-up (sound levels, alert/hiss, Docs)
+- Sounds measured (Python wave): 0.03–1.2 s, no clipping, no silence; RMS spread was 14.8 dB (heal −12,
+  click −27 dBFS). mksounds.py now levels all to −18 dBFS RMS, peak ≤ −3 dBFS (spread 4.9 dB; stairs −23, peaky steps).
+- alert/hiss (pane, explore + `>`, rvipSound wrapped): hiss came in bursts (3 in 1.7 s; fires per alien move);
+  alert only when an alien interrupts a long action (0–1 per 2 min). `RVIP_SOUND_GAP` (RvipSound.hpp): alert ≥5 s,
+  hiss ≥4 s apart. Not listened to by ear.
+- Docs entry: `~/Desktop/Games/Roguelikes/Docs/alienhack.html` (GAMES dict in build-docs.py + guide/Saving in
+  guides.py, generated once from make-help.py; make-help.py stays self-contained).
+
 **RVIP complete** (stages 1–9) except: deploys (stages 5–9) and the Mac checks (pane look,
 375 px, screenshots, Menlo killer art).
