@@ -3,7 +3,7 @@
 This is a browser port of **AlienHack 0.9.1 beta** by Sock Puppet, a tactical roguelike loosely
 based on AliensRL. Upstream: [SockPuppet8/Alienhack @ b843d42](https://github.com/SockPuppet8/Alienhack/tree/b843d42)
 (dependency [SockPuppet8/RL-Shared @ c42d388](https://github.com/SockPuppet8/RL-Shared/tree/c42d3889d58672a5198ee2066c5cb1af509889f1), cloned and patched by `web/build.sh`).
-All changes: [compare b843d42...main](https://github.com/memmaker/Alienhack/compare/b843d42...main).
+All changes: [compare b843d42...master](https://github.com/memmaker/Alienhack/compare/b843d42...master).
 
 Play: https://ruzzoli.de/roguelikes/alienhack/
 
