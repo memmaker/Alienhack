@@ -189,7 +189,8 @@ function drawScreen() {
   if (!wm || !wm.shown('screen')) return;
   var b = $('screen'), best = 6;
   for (var p = 6; p <= 48; p++) { var c = cellFor(p); if (c.w * 80 <= b.clientWidth && c.h * 40 <= b.clientHeight) best = p; else break; }
-  b.style.fontFamily = mapFont(best).replace(/^\d+px /, ''); b.style.fontSize = best + 'px'; b.style.lineHeight = cellFor(best).h + 'px';
+  b.style.fontFamily = mapFont(best).replace(/^\d+px /, ''); b.style.fontSize = best + 'px'; var c = cellFor(best); b.style.lineHeight = c.h + 'px';
+  b.style.padding = Math.max(0, (b.clientHeight - c.h * 40) >> 1) + 'px 0 0 ' + Math.max(0, (b.clientWidth - c.w * 80) >> 1) + 'px';  /* centred */
 }
 
 /* ---- the game's hooks ---- */
