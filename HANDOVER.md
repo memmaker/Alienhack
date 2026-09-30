@@ -143,6 +143,20 @@
 - Open (Mac): merge both branches to main; game repo split per 5.15 (`rvip`-free already, but README compare
   link says `main`); add `web/deploy.sh` with guard; build + `deploy.sh` both repos; run og.py for the index
   og image; check `curl -s https://ruzzoli.de/roguelikes/alienhack/ | grep og:image`; Mac pane check.
+### Mac check (block 2)
+- Pane (local server of web/dist + shared JS) and headless: title, Quick game, story, map; explore H across
+  floors (door opens, item/alien stops), a key press stops it; `>` walks to the known stairs and climbs
+  (Ground → 1st floor); Enter menu; inventory I; death → mission report → title → new game: all pass.
+- Fixed: side windows (Inventory, Visible, Messages, Status) kept the last game on the title: `Title::draw`
+  calls `rvipClearPanes()` (RvipMenus.cpp), which sends each pane empty.
+- Fixed: one-window mode was a canvas (W0 rule 6): the game sends the 80x40 screen as a text pane
+  (`rvip_pane("screen")`, colour marks), shown in `<pre id="screen">`, font fitted to the window.
+- Added mouse: a click on a pop-up line sends `0x800|line`, on the whole screen `0x1000|row`; readKey turns
+  it into ext key 3 + `rvip_click_row`; Enter menu runs the row, inventory opens the item menu (drop prompt:
+  drops), item menu runs the action.
+- smoke.cjs, idbtest.cjs, resize.cjs: pass, no errors.
+- Open: explore not reached on a dark floor (`OverWorld::isDark`, vision 8) or deep floors in the pane
+  (the test hero died on the 1st floor); explore uses `isVisible`, so it should hold. Deploy by orchestrator.
 ### Open
 - No deploy (cloud run). Mac check in the browser pane still to do (stage 1 + 2: watch explore painting).
 - Explore key interrupt not tested headless (Asyncify timing); explore not run on deep/dark floors.
