@@ -31,4 +31,6 @@ em++ $OBJS -o $WEB/dist/alienhack.js ${OPT:--O2} -fexceptions -sUSE_BOOST_HEADER
   -sEXPORTED_RUNTIME_METHODS=FS,IDBFS,HEAPU8,HEAP8 -sFORCE_FILESYSTEM -lidbfs.js -sENVIRONMENT=web \
   --preload-file $WEB/pkg@/ahdata $LDEXTRA
 cp $WEB/index.html $WEB/dist/
+python3 $WEB/mksounds.py $WEB/dist/sound
+python3 $WEB/make-help.py $WEB/dist/help.html
 echo built $WEB/dist

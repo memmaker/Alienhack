@@ -1,4 +1,5 @@
 #include "PlayingGame.hpp"
+#include "RvipSound.hpp"
 #include "story.hpp"
 #include "draw.hpp"
 #include "TargetSelect.hpp"
@@ -1164,6 +1165,7 @@ PlayingGame::CommandResult PlayingGame::interpretKey( const AUserInputItem& inpu
 						//TODO add action for this
 						if (player_obj->moveTo( model, WorldObject::WorldLocation( target_floor, loc.x, loc.z ), true ))
 						{
+							RVIP_SOUND("stairs");
 							model.updateVision();
 							model.updateHearing();
 						}
@@ -1193,6 +1195,7 @@ PlayingGame::CommandResult PlayingGame::interpretKey( const AUserInputItem& inpu
 						//TODO add action for this
 						if (player_obj->moveTo( model, WorldObject::WorldLocation( target_floor, loc.x, loc.z ), true ))
 						{
+							RVIP_SOUND("stairs");
 							model.updateVision();
 							model.updateHearing();
 						}

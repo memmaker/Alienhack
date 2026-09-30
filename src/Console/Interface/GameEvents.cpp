@@ -16,6 +16,8 @@
 
 
 
+#include "RvipSound.hpp"
+
 namespace AlienHack
 {
 
@@ -70,12 +72,15 @@ public:
 
 	virtual void playerFiredRound(AHGameModel&, PlayerCharacter& player, Weapon& weapon)
 	{
+		RVIP_SOUND("fire");
 	}
 	virtual void playerFiredRoundFailed(AHGameModel&, PlayerCharacter& player, Weapon& weapon)
 	{
+		RVIP_SOUND("click");
 	}
 	virtual void playerPickedUp(AHGameModel&, PlayerCharacter& /*player*/, Pickup& object)
 	{
+		RVIP_SOUND("pickup");
 		std::string yes_str("You picked up " + std::string(object.getThereIsString(false)));
 		if (object.pickupType() == pickup::CreditChip)
 		{
@@ -103,6 +108,7 @@ public:
 	}
 	virtual void playerTookAmmo(AHGameModel& model, PlayerCharacter& /*player*/, Weapon& object, int amount)
 	{
+		RVIP_SOUND("reload");
 		if (amount > 0)
 		{
 			std::string msg_str("You take " + boost::lexical_cast<std::string>(amount) + " ammo from " + object.getThereIsString(false) + ".");
@@ -111,6 +117,7 @@ public:
 	}
 	virtual void playerWearsArmour(AHGameModel&, PlayerCharacter& /*player*/, Armour& armour)
 	{
+		RVIP_SOUND("wear");
 		std::string str("You put on ");
 		str += armour.getThereIsString(true);
 		str += ".";
@@ -118,6 +125,7 @@ public:
 	}
 	virtual void playerDropsArmour(AHGameModel&, PlayerCharacter& /*player*/, Armour& armour)
 	{
+		RVIP_SOUND("drop");
 		std::string str("You drop ");
 		str += armour.getThereIsString(true);
 		str += ".";
@@ -125,6 +133,7 @@ public:
 	}
 	virtual void playerUsesWeapon(AHGameModel&, PlayerCharacter& player, Weapon& weapon)
 	{
+		RVIP_SOUND("wield");
 		std::string str("You pick up ");
 		str += weapon.getThereIsString(false);
 		str += ".";
@@ -132,6 +141,7 @@ public:
 	}
 	virtual void playerDropsWeapon(AHGameModel&, PlayerCharacter& player, Weapon& weapon)
 	{
+		RVIP_SOUND("drop");
 		std::string str("You drop ");
 		str += weapon.getThereIsString(false);
 		str += ".";
@@ -139,6 +149,7 @@ public:
 	}
 	virtual void playerDropsItem(AHGameModel&, PlayerCharacter& player, Pickup& item)
 	{
+		RVIP_SOUND("drop");
 		std::string str("You drop ");
 		str += item.getThereIsString(false);
 		str += ".";
@@ -146,6 +157,7 @@ public:
 	}
 	virtual void playerSwitchedWeapon(AHGameModel& model, PlayerCharacter& player, PlayerCharacter::WeaponSlot from, PlayerCharacter::WeaponSlot to)
 	{
+		RVIP_SOUND("wield");
 		const RL_shared::World& world( model.world() );
 		bool has_sidearm(world.objectExists(player.weapon( PlayerCharacter::Sidearm )));
 		bool has_primary(world.objectExists(player.weapon( PlayerCharacter::Primary )));
@@ -185,27 +197,33 @@ public:
 	}
 	virtual void playerUsedNeutraliser(AHGameModel&, PlayerCharacter& /*player*/)
 	{
+		RVIP_SOUND("spray");
 		m_msgs.addString("You use the molecular neutraliser. The acid stops reacting.");
 	}
 	virtual void playerUsedMedkit(AHGameModel&, PlayerCharacter& /*player*/)
 	{
+		RVIP_SOUND("heal");
 		m_msgs.addString("You shoot up the adrenamorph from the medkit. You feel ready to keep fighting!");
 	}
 	virtual void playerUsedMedkitPlus(AHGameModel&, PlayerCharacter& /*player*/)
 	{
+		RVIP_SOUND("heal");
 		m_msgs.addString("You use the medkit to patch up some of your wounds.");
 	}
 
 	virtual void playerDodgedAttack(AHGameModel&, PlayerCharacter& /*player*/, DBKeyValue /*attacker*/)
 	{
+		RVIP_SOUND("dodge");
 		m_msgs.addString("You dodge the attack!");
 	}
 	virtual void playerDodgedAcid(AHGameModel&, PlayerCharacter& /*player*/)
 	{
+		RVIP_SOUND("dodge");
 		m_msgs.addString("You manage to avoid the acid!");
 	}
 	virtual void playerFendedAttacker(AHGameModel& model, PlayerCharacter& player, AHGameObject& attacker)
 	{
+		RVIP_SOUND("hit");
 		int enemy_HP = 20;
 		try
 		{
@@ -225,6 +243,7 @@ public:
 
 	virtual void playerHit(AHGameModel&, PlayerCharacter& player, damage::Type type, int amount )
 	{
+		RVIP_SOUND("hurt");
 		std::string msg("You take ");
 		msg += boost::lexical_cast<std::string>(amount);
 		msg += " damage!";
@@ -233,6 +252,7 @@ public:
 
 	virtual void playerArmourHit(AHGameModel&, PlayerCharacter& player, damage::Type type, int amount )
 	{
+		RVIP_SOUND("armour");
 		std::string msg("Your armour takes ");
 		msg += boost::lexical_cast<std::string>(amount);
 		msg += " damage!";
@@ -241,20 +261,24 @@ public:
 
 	virtual void playerDies(AHGameModel&, PlayerCharacter& player)
 	{
+		RVIP_SOUND("death");
 		m_msgs.addString("You die...");
 	}
 
 	virtual void playerHuggered(AHGameModel&, PlayerCharacter&)
 	{
+		RVIP_SOUND("hugger");
 		m_msgs.addString("The facehugger crawls onto your face! You choke on something slimy. You lose consciousness.");
 	}
 	virtual void playerDodgedHugger(AHGameModel&, PlayerCharacter&)
 	{
+		RVIP_SOUND("dodge");
 		m_msgs.addString("You knock it away from you!");
 	}
 
 	virtual void playerSeesAlien(AHGameModel&, PlayerCharacter&, Alien& alien)
 	{
+		RVIP_SOUND("alert");
 		std::string msg( "You see a vicious alien " );
 		msg += alien.getSelectName(false);
 		msg += "!";
@@ -268,11 +292,13 @@ public:
 
 	virtual void downloadedMap(AHGameModel&)
 	{
+		RVIP_SOUND("beep");
 		m_msgs.addString("Map downloaded.");
 	}
 
 	virtual void placedDemoCharge(AHGameModel&, int fuse_seconds)
 	{
+		RVIP_SOUND("arm");
 		std::string msg;
 		msg += "You place the demolition charge. It will detonate in ";
 		msg += boost::lexical_cast<std::string>(fuse_seconds);
@@ -285,15 +311,18 @@ public:
 	}
 	virtual void demoChargeDetonates(AHGameModel&, Explosive&)
 	{
+		RVIP_SOUND("explode");
 		m_msgs.addString("The demolition charge detonates!");
 	}
 
 	virtual void doorOpened(AHGameModel&, const RL_shared::WorldObject::WorldLocation&)
 	{
+		RVIP_SOUND("door");
 		m_msgs.addString("The door opens.");
 	}
 	virtual void doorClosed(AHGameModel&, const RL_shared::WorldObject::WorldLocation&)
 	{
+		RVIP_SOUND("door");
 		m_msgs.addString("The door closes.");
 	}
 	virtual void doorBlocked(AHGameModel&, const AHGameObject&)
@@ -302,10 +331,12 @@ public:
 	}
 	virtual void doorRammed(AHGameModel&, const AHGameObject&, const RL_shared::WorldObject::WorldLocation&)
 	{
+		RVIP_SOUND("bang");
 		m_msgs.addString("You hear the mighty thump of a door being rammed!");
 	}
 	virtual void doorRammedOpen(AHGameModel&, const AHGameObject&, const RL_shared::WorldObject::WorldLocation&)
 	{
+		RVIP_SOUND("bang");
 		m_msgs.addString("You hear a shuddering crash as a door is breached!");
 	}
 
@@ -316,6 +347,7 @@ public:
 
 	virtual void alienMakesSoundNearby(AHGameModel&, const Alien& alien, int distance_squared)
 	{
+		RVIP_SOUND("hiss");
 		if (aliens::isLargeAlien(alien.alienType()))
 		{
 			if (distance_squared <= 9)
@@ -356,6 +388,7 @@ public:
 
 	virtual void alienHit(AHGameModel& model, RL_shared::DBKeyValue hit_alien, damage::Type type, int amount )
 	{
+		RVIP_SOUND("hit");
 		using namespace RL_shared;
 		std::string alien_str("alien");
 		const World& world( model.world() );
@@ -384,6 +417,7 @@ public:
 
 	virtual void alienDies(AHGameModel& model, RL_shared::DBKeyValue hit_alien)
 	{
+		RVIP_SOUND("kill");
 		using namespace RL_shared;
 		std::string alien_str("alien");
 		const World& world( model.world() );
@@ -401,6 +435,7 @@ public:
 
 	virtual void queenScreech(AHGameModel&, Alien&)
 	{
+		RVIP_SOUND("screech");
 		m_msgs.addString("The queen lets out a hideous screeching cry!");
 	}
 
@@ -418,6 +453,7 @@ public:
 	}
 	virtual void spitterAttackSpit(AHGameModel&, Alien& alien)
 	{
+		RVIP_SOUND("spit");
 		std::string msg("The ");
 		msg += alien.getSelectName(false);
 		msg += " spits acid!";
@@ -426,6 +462,7 @@ public:
 
 	virtual void armourDestroyed(AHGameModel& model, Armour& armour, damage::Type type)
 	{
+		RVIP_SOUND("break");
 		if (damage::Acid == type)
 		{
 			if (armour.wearer() == model.avatar())
@@ -457,6 +494,7 @@ public:
 
 	virtual void acidSplashed(AHGameModel& model, AHGameObject& on)
 	{
+		RVIP_SOUND("acid");
 		std::string msg;
 		if (on.key() == model.avatar())
 			msg += "You are";

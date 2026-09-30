@@ -108,6 +108,28 @@
 - Open: no deploy / `web/deploy.sh` yet (cloud); death → new game not tested in the browser;
   real look in the pane (Mac) still needed; sound checkboxes stored only (stage 6).
 
+### Stage 6 — Docs and sound (done, cloud run; not deployed)
+- **Help:** `web/make-help.py` (self-contained, cloud) → `dist/help.html` (run by `build.sh`). Key table
+  parsed from `HelpScreen.cpp` (label + control name, 39 rows + Inventory) with keys from `keys.txt`
+  (asserts >30 rows, every control in keys.txt); essentials box, Saving (IDB, autosave, Export/Import),
+  new-player guide, tips (from ah_readme), "Playing in the browser", full ah_readme.txt in `<details>`.
+  Credits: Sock Puppet, based on AliensRL (Kornel Kisielewicz); licence CC0 (`license.txt`).
+  No Mac Docs entry yet (no Docs folder in cloud): generate one from make-help.py on the Mac.
+- **Sound search:** web search (archive.org, roguetemple, GitHub, pastebin readme): upstream README says the
+  game has no sound effects; no music, no fan packs found. So: effects synthesized at build time by
+  `web/mksounds.py` (pure Python, public domain, 28 wavs → `dist/sound/`); **no music, Music toggle removed**.
+- **Hooks (game actions, never message text):** `src/Console/Interface/RvipSound.hpp` `RVIP_SOUND(name)`
+  (EM_ASM → `Module.rvipSound`, no-op natively) at the start of 36 `GameEvents.cpp` event handlers
+  (fire, click, pickup, reload, wear, wield, drop, spray, heal, dodge, hit, hurt, armour, death, hugger,
+  alert, beep, arm, explode, door, bang, hiss, kill, screech, spit, break, acid) + `stairs` in
+  PlayingGame FloorUp/FloorDown climb. Page: `Module.rvipSound` plays via `../rvip-sound.js` only when
+  Audio ▾ → Sound effects (`L.sfx`, web-layout.json) is on; off by default.
+- Tested (Playwright headless, real clicks): sfx off by default and no sound requests while off; after a
+  real click on the checkbox explore's door opens play `door` (`sound/door.wav` requested); Help opens with
+  the guide, Esc closes. Other events only checked by name ⇄ wav (all names have a wav).
+- Open: no deploy; Mac pane look + listening check of the synthesized sounds (volume/taste); `alert`
+  (alien seen) and `hiss` (alien noise nearby) may be too frequent in play — tune after listening.
+
 ### Open
 - No deploy (cloud run). Mac check in the browser pane still to do (stage 1 + 2: watch explore painting).
 - Explore key interrupt not tested headless (Asyncify timing); explore not run on deep/dark floors.

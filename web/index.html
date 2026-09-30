@@ -55,7 +55,6 @@ kbd{background:#22222a;border:1px solid var(--line);border-radius:3px;padding:0 
 </div>
 <div id="menu-audio" hidden>
   <label><input type="checkbox" id="snd-fx"> Sound effects</label>
-  <label><input type="checkbox" id="snd-music"> Music</label>
 </div>
 <input type="file" id="import-file" hidden>
 <div id="game">
@@ -70,6 +69,7 @@ kbd{background:#22222a;border:1px solid var(--line);border-radius:3px;padding:0 
 <div id="help" hidden><button id="help-close">Close</button><div id="help-body" tabindex="-1"></div></div>
 <script src="../rvip-wm.js"></script>
 <script src="../rvip-app.js"></script>
+<script src="../rvip-sound.js"></script>
 <script>
 'use strict';
 function $(id) { return document.getElementById(id); }
@@ -122,7 +122,7 @@ function applyFonts() {
 RvipWM.dropdown($('btn-file'), $('menu-file'));
 RvipWM.dropdown($('btn-audio'), $('menu-audio'));
 ['btn-help', 'btn-file', 'btn-audio', 'btn-layout'].forEach(function (id) { $(id).addEventListener('mousedown', function (e) { e.preventDefault(); }); });
-[['snd-fx', 'sfx'], ['snd-music', 'music']].forEach(function (p) {
+[['snd-fx', 'sfx']].forEach(function (p) {
   var c = $(p[0]); c.onchange = function () { L[p[1]] = c.checked; saveLayout(); };
 });
 
@@ -186,6 +186,8 @@ function drawScreen() {
 /* ---- the game's hooks ---- */
 var lastMsg = null;
 var Module = {
+  /* sound: the game names an action's sound (RVIP_SOUND); played only when Audio > Sound effects is on */
+  rvipSound: function (n) { if (L.sfx) RVIPSound.play([n], 0.6); },
   rvipKeys: [],
   rvipScreen: function (ch, fg, bg, w, h) { scr = { ch: ch.slice(), fg: fg.slice(), bg: bg.slice(), w: w, h: h }; drawScreen(); },
   rvipMap: function (ch, fg, bg, w, h) { map = { ch: ch, fg: fg, bg: bg, w: w, h: h }; drawMap(); },
@@ -231,7 +233,7 @@ var Module = {
 };
 
 function startWM() {
-  $('snd-fx').checked = !!L.sfx; $('snd-music').checked = !!L.music;
+  $('snd-fx').checked = !!L.sfx;
   wm = RvipWM({
     area: $('game'), menu: $('btn-layout'),
     wins: [{ id: 'map', title: 'Map' }, { id: 'stat', title: 'Status' }, { id: 'inv', title: 'Inventory' },
