@@ -278,7 +278,7 @@ public:
 
 	virtual void playerSeesAlien(AHGameModel&, PlayerCharacter&, Alien& alien)
 	{
-		RVIP_SOUND("alert");
+		RVIP_SOUND_GAP("alert", 5000);
 		std::string msg( "You see a vicious alien " );
 		msg += alien.getSelectName(false);
 		msg += "!";
@@ -347,7 +347,7 @@ public:
 
 	virtual void alienMakesSoundNearby(AHGameModel&, const Alien& alien, int distance_squared)
 	{
-		RVIP_SOUND("hiss");
+		RVIP_SOUND_GAP("hiss", 4000);
 		if (aliens::isLargeAlien(alien.alienType()))
 		{
 			if (distance_squared <= 9)
