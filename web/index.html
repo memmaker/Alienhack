@@ -19,7 +19,11 @@ var Module={rvipKeys:[],
   document.getElementById('screen').innerHTML=out.join('\n');}};
 var KEYS={ArrowUp:0x148,ArrowDown:0x150,ArrowLeft:0x14b,ArrowRight:0x14d,Home:0x147,PageUp:0x149,End:0x14f,PageDown:0x151,
  Enter:13,Escape:27,Backspace:8,Tab:9};
+var PAD={Numpad0:'0',Numpad1:'1',Numpad2:'2',Numpad3:'3',Numpad4:'4',Numpad5:'5',Numpad6:'6',Numpad7:'7',Numpad8:'8',Numpad9:'9',
+ NumpadDecimal:'.',NumpadAdd:'+',NumpadSubtract:'-',NumpadMultiply:'*'};
 document.addEventListener('keydown',function(e){var k=KEYS[e.key];
+ if(PAD[e.code]&&!e.ctrlKey&&!e.metaKey)k=0x200|PAD[e.code].charCodeAt(0);
+ else if(e.ctrlKey&&!e.metaKey&&!e.altKey&&/^[a-zA-Z]$/.test(e.key)&&'wWtTnN'.indexOf(e.key)<0)k=0x400|e.key.toLowerCase().charCodeAt(0);
  if(k===undefined&&e.key.length===1&&!e.ctrlKey&&!e.metaKey)k=e.key.charCodeAt(0)&0xff;
  if(k===undefined)return;e.preventDefault();Module.rvipKeys.push(k);});
 </script>

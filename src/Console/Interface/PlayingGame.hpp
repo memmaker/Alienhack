@@ -103,6 +103,12 @@ private:
 	bool autoStep( AHGameModel&, int& mx, int& mz );
 	int scanView( AHGameModel&, std::string* alien_name, std::string* new_item, bool record_items );
 
+	// RVIP stage 3: menus run commands through the CMD key (see RvipMenus.hpp).
+	bool m_is_cmd, m_child_opened;
+	std::string m_cmd;
+	bool isFn( const RL_shared::AUserInputItem& in, const char* fn ) const;
+	CommandResult interpretKey( const RL_shared::AUserInputItem&, RL_shared::AGameModel& );
+
 	void writeMortem( RL_shared::AGameModel& in_model );
 	void showMortem();
 };

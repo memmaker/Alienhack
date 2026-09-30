@@ -14,6 +14,10 @@ EM_JS(int, web_poll_key, (void), {
 
 // Set by the game while auto-explore / a stair walk runs (PlayingGame.cpp).
 extern "C" { bool rvip_auto_on = false; }
+// RVIP stage 3: rvip_next_key (>= 0, 0x100 = ext) is returned by the next
+// readKey: menus queue the CMD key (PlayingGame runs rvip_cmd) or forward a key.
+// rvip_numpad_raw is set while a menu wants raw keypad keys (page: 0x200|char).
+extern "C" { int rvip_next_key = -1; bool rvip_numpad_raw = false; }
 
 namespace RL_shared
 {
@@ -51,6 +55,7 @@ void Console::sleep(int ms) { emscripten_sleep(ms > 0 ? ms : 0); }
 KeyCode Console::readKey(void)
 {
 	int k;
+	if (rvip_next_key >= 0) { k = rvip_next_key; rvip_next_key = -1; return KeyCode( (char)(k & 0xff), (k & 0x100) != 0 ); }
 	if (rvip_auto_on)
 	{	// paint the step, then either a real key cancels (and is dropped) or the next step runs
 		emscripten_sleep(40);
@@ -59,6 +64,22 @@ KeyCode Console::readKey(void)
 		rvip_auto_on = false;
 	}
 	while ((k = web_poll_key()) < 0) emscripten_sleep(16);
+	if (k & 0x400)	// Ctrl+letter (page sends 0x400|'a'..'z') -> ext 0xA0+index
+		return KeyCode( (char)(0xA0 + ((k & 0xff) - 'a')), true );
+	if (k & 0x200)
+	{	// keypad: raw (ext char) in menus, else directions / 5 = wait
+		char c = (char)(k & 0xff);
+		if (rvip_numpad_raw) return KeyCode( c, true );
+		switch (c)
+		{
+		case '8': return KeyCode( 72, true ); case '2': return KeyCode( 80, true );
+		case '4': return KeyCode( 75, true ); case '6': return KeyCode( 77, true );
+		case '7': return KeyCode( 71, true ); case '9': return KeyCode( 73, true );
+		case '1': return KeyCode( 79, true ); case '3': return KeyCode( 81, true );
+		case '5': return KeyCode( '.', false );
+		default: return KeyCode( c, false );
+		}
+	}
 	return KeyCode( (char)(k & 0xff), (k & 0x100) != 0 );
 }
 Console::ConsoleDims Console::getConsoleDimensions(void)

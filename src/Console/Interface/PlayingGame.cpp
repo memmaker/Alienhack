@@ -16,6 +16,7 @@
 #include "BuyPerks.hpp"
 #include "ViewFile.hpp"
 #include "GameEvents.hpp"
+#include "RvipMenus.hpp"
 #include "../../Model/save.hpp"
 #include "../../Model/AHGameModel.hpp"
 #include "../../Model/FindNearest.hpp"
@@ -473,7 +474,7 @@ PlayingGame::PlayingGame(
 , m_shown_good_ending_text_2(false)
 , m_shown_death_msg(false)
 , m_shown_mortem(false)
-, m_auto(0), m_auto_zone(INVALID_KEY), m_auto_px(0), m_auto_pz(0), m_auto_tx(0), m_auto_tz(0)
+, m_auto(0), m_is_cmd(false), m_child_opened(false), m_auto_zone(INVALID_KEY), m_auto_px(0), m_auto_pz(0), m_auto_tx(0), m_auto_tz(0)
 , m_auto_moved(false), m_auto_door(false), m_auto_aliens(0)
 {
 	ASSERT( m_key_map );
@@ -607,6 +608,9 @@ void PlayingGame::enterFromChild( AGameModel& in_model )
 }
 void PlayingGame::exitToChild( AGameModel& )
 {
+	m_child_opened = true;
+	if ((RVIP_CMD_KEY == rvip_next_key) && ("Inventory?" == rvip_cmd))
+		rvip_next_key = -1;	// the action opened a prompt: no inventory reopen
 	m_auto = 0;
 	rvip_auto_on = false;
 }
@@ -795,7 +799,27 @@ bool PlayingGame::autoStep( AHGameModel& model, int& mx, int& mz )
 	return true;
 }
 
+bool PlayingGame::isFn( const AUserInputItem& in, const char* fn ) const
+{
+	return m_is_cmd ? (m_cmd == fn) : m_key_map->isFunction(in, fn);
+}
+
 PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& input, AGameModel& in_model )
+{
+	m_is_cmd = (dynamic_cast<const KeyPress&>(input).value == RL_shared::KeyCode( (char)(RVIP_CMD_KEY & 0xff), true ));
+	m_cmd = m_is_cmd ? rvip_cmd : std::string();
+	bool reopen = false;
+	std::string::size_type bar( m_cmd.find("|reopen") );
+	if (std::string::npos != bar) { reopen = true; m_cmd.erase(bar); }
+	m_child_opened = false;
+	CommandResult res( interpretKey( input, in_model ) );
+	m_is_cmd = false;
+	if (reopen && !m_child_opened && !m_quit)
+		rvipRunCommand("Inventory?");	// list reopens after the action unless an alien is in view
+	return res;
+}
+
+PlayingGame::CommandResult PlayingGame::interpretKey( const AUserInputItem& input, AGameModel& in_model )
 {
 	AHGameModel& model( dynamic_cast<AHGameModel&>(in_model) );
 	World& world( model.world() );
@@ -814,6 +838,13 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		stopAuto("");	// a real key interrupted the walk
 
 	m_msgs.beginNewMessage();
+
+	if (m_is_cmd && ("Inventory?" == m_cmd))
+	{
+		if (scanView(model, 0, 0, true) > 0)
+			return CommandResult( false, true );
+		m_cmd = "Inventory";
+	}
 
 	OverWorld& overworld( model.overworld() );
 
@@ -847,68 +878,109 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		move = true;
 		m_move_only = m_turn_only = m_activating_object = m_placing_charge = false;
 	}
-	else if (m_key_map->isFunction(input, "Explore"))
+	else if (isFn(input, "OK"))
+	{
+		setNextState( shared_ptr< CommandMenu >( new CommandMenu( interfaceStateMachine(), m_key_map, model.isCountdownActive() ) ) );
+		return CommandResult( false, true );
+	}
+	else if (isFn(input, "Inventory"))
+	{
+		setNextState( shared_ptr< InventoryMenu >( new InventoryMenu( interfaceStateMachine(), m_key_map, model.isCountdownActive(), false ) ) );
+		return CommandResult( false, true );
+	}
+	else if (m_is_cmd && (0 == m_cmd.compare(0, 5, "Drop:")))
+	{
+		SelectDropItem selector(m_msgs, model, world, overworld, player_obj);
+		advance = selector.select(m_cmd.substr(5));
+	}
+	else if (m_is_cmd && (0 == m_cmd.compare(0, 8, "Examine:")))
+	{
+		std::string fn( m_cmd.substr(8) ), text;
+		if ("Armour" == fn && world.objectExists(player_obj->armour()))
+			text = "Armour: " + dynamic_cast<const AHGameObject&>(world.object(player_obj->armour())).getSelectName(true) + ".";
+		else if (("Sidearm" == fn) || ("Primary" == fn))
+		{
+			PlayerCharacter::WeaponSlot slot( ("Sidearm" == fn) ? PlayerCharacter::Sidearm : PlayerCharacter::Primary );
+			if (world.objectExists(player_obj->weapon(slot)))
+				text = fn + ": " + dynamic_cast<const AHGameObject&>(world.object(player_obj->weapon(slot))).getSelectName(true)
+					+ ((player_obj->currentWeapon() == slot) ? ", in hand." : ".");
+		}
+		else
+		{
+			static const struct { const char* fn; pickup::Type t; const char* name; } pk[] = {
+				{ "Frag", pickup::FragGrenade, "Frag grenades" }, { "Krak", pickup::KrakGrenade, "Krak grenades" },
+				{ "Stun", pickup::StunGrenade, "Stun grenades" }, { "Inc", pickup::IncGrenade, "Inc grenades" },
+				{ "Medkit", pickup::Medkit, "Medkits" }, { "Neutraliser", pickup::Neutraliser, "Neutraliser" },
+				{ "Demolition", pickup::DemoCharge, "Demolition charges" } };
+			for (size_t i = 0; i < sizeof pk / sizeof pk[0]; ++i)
+				if (fn == pk[i].fn)
+					text = std::string(pk[i].name) + ": " + std::to_string(player_obj->num(pk[i].t)) + " of " + std::to_string(player_obj->max(pk[i].t)) + ".";
+		}
+		if (!text.empty())
+			m_msgs.addString(text.c_str());
+	}
+	else if (isFn(input, "Explore"))
 	{
 		startAuto( model, 1 );
 		return CommandResult( false, true );
 	}
-	else if (m_key_map->isFunction(input, "Help"))
+	else if (isFn(input, "Help"))
 	{
 		shared_ptr< HelpScreen > newstate( new HelpScreen(interfaceStateMachine(), m_key_map, model.isCountdownActive() ? HelpScreen::Red : HelpScreen::Normal) );
 		setNextState( newstate );
 		return CommandResult( false, true );
 	}
-	else if (m_key_map->isFunction(input, "Left"))
+	else if (isFn(input, "Left"))
 	{
 		move = true;
 		mx = -1;
 	}
-	else if (m_key_map->isFunction(input, "Right"))
+	else if (isFn(input, "Right"))
 	{
 		move = true;
 		mx = 1;
 	}
-	else if (m_key_map->isFunction(input, "Up"))
+	else if (isFn(input, "Up"))
 	{
 		move = true;
 		mz = 1;
 	}
-	else if (m_key_map->isFunction(input, "Down"))
+	else if (isFn(input, "Down"))
 	{
 		move = true;
 		mz = -1;
 	}
-	else if (m_key_map->isFunction(input, "UpAndLeft"))
+	else if (isFn(input, "UpAndLeft"))
 	{
 		move = true;
 		mx = -1;
 		mz = 1;
 	}
-	else if (m_key_map->isFunction(input, "UpAndRight"))
+	else if (isFn(input, "UpAndRight"))
 	{
 		move = true;
 		mx = 1;
 		mz = 1;
 	}
-	else if (m_key_map->isFunction(input, "DownAndLeft"))
+	else if (isFn(input, "DownAndLeft"))
 	{
 		move = true;
 		mx = -1;
 		mz = -1;
 	}
-	else if (m_key_map->isFunction(input, "DownAndRight"))
+	else if (isFn(input, "DownAndRight"))
 	{
 		move = true;
 		mx = 1;
 		mz = -1;
 	}
-	else if (m_key_map->isFunction(input, "Wait"))
+	else if (isFn(input, "Wait"))
 	{
 		advance = true;
 		shared_ptr< WaitAction > wait_action( new WaitAction(player_obj, player_obj->getActionTime(model, player_actions::Wait)) );
 		model.actionEngine().addAction( wait_action );
 	}
-	else if (m_key_map->isFunction(input, "Strafe"))
+	else if (isFn(input, "Strafe"))
 	{
 		m_move_only = true;
 		m_turn_only = false;
@@ -917,7 +989,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		m_activating_object = false;
 		m_placing_charge = false;
 	}
-	else if (m_key_map->isFunction(input, "StrafeLock"))
+	else if (isFn(input, "StrafeLock"))
 	{
 		m_move_only = true;
 		m_turn_only = false;
@@ -926,7 +998,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		m_activating_object = false;
 		m_placing_charge = false;
 	}
-	else if (m_key_map->isFunction(input, "Turn"))
+	else if (isFn(input, "Turn"))
 	{
 		m_move_only = false;
 		m_turn_only = true;
@@ -935,7 +1007,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		m_activating_object = false;
 		m_placing_charge = false;
 	}
-	else if (m_key_map->isFunction(input, "TurnLock"))
+	else if (isFn(input, "TurnLock"))
 	{
 		m_move_only = false;
 		m_turn_only = true;
@@ -944,7 +1016,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		m_activating_object = false;
 		m_placing_charge = false;
 	}
-	else if (m_key_map->isFunction(input, "Back"))
+	else if (isFn(input, "Back"))
 	{
 		m_activating_object = false;
 		m_placing_charge = false;
@@ -953,11 +1025,11 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		m_move_lock = false;
 		m_turn_lock = false;
 	}
-	else if (m_key_map->isFunction(input, "Get"))
+	else if (isFn(input, "Get"))
 	{
 		advance = doGetPickupsMenu(*this, m_key_map, model, m_msgs);
 	}
-	else if (m_key_map->isFunction(input, "Fire"))
+	else if (isFn(input, "Fire"))
 	{
 		DBKeyValue weapon_key( player_obj->weapon( player_obj->currentWeapon() ) );
 		if (!world.objectExists(weapon_key))
@@ -985,7 +1057,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			}
 		}
 	}
-	else if (m_key_map->isFunction(input, "Look"))
+	else if (isFn(input, "Look"))
 	{
 		if (m_first_look_mode)
 			m_msgs.addString("Use movement controls to move the cursor, and look at the bottom left of the screen to see what is under it. Press Esc to return to the game.");
@@ -1003,7 +1075,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		setNextState( newstate );
 		return CommandResult( false, true );
 	}
-	else if (m_key_map->isFunction(input, "Sidearm"))
+	else if (isFn(input, "Sidearm"))
 	{
 		if (PlayerCharacter::Sidearm != player_obj->currentWeapon())
 		{
@@ -1015,7 +1087,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		else
 			m_msgs.addString("You're already holding your sidearm!");
 	}
-	else if (m_key_map->isFunction(input, "Primary"))
+	else if (isFn(input, "Primary"))
 	{
 		if (world.objectExists(player_obj->weapon( PlayerCharacter::Primary )))
 		{
@@ -1032,7 +1104,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		else
 			m_msgs.addString("You don't have a primary weapon!");
 	}
-	else if (m_key_map->isFunction(input, "Reload"))
+	else if (isFn(input, "Reload"))
 	{
 		DBKeyValue weapon_key( player_obj->weapon( player_obj->currentWeapon() ) );
 		if (world.objectExists(weapon_key))
@@ -1056,7 +1128,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		}
 	}
 	//TODO merge code for the below two commands
-	else if (m_key_map->isFunction(input, "FloorUp"))
+	else if (isFn(input, "FloorUp"))
 	{
 		if (world.zoneExists(loc.zone))
 		{
@@ -1085,7 +1157,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			}
 		}
 	}
-	else if (m_key_map->isFunction(input, "FloorDown"))
+	else if (isFn(input, "FloorDown"))
 	{
 		if (world.zoneExists(loc.zone))
 		{
@@ -1115,7 +1187,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 		}
 	}
 	//TODO merge code from the below 4 grenade-throwing commands
-	else if (m_key_map->isFunction(input, "Frag"))
+	else if (isFn(input, "Frag"))
 	{
 		if (player_obj->num( pickup::FragGrenade ) < 1)
 		{
@@ -1130,7 +1202,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			return CommandResult( false, true );
 		}
 	}
-	else if (m_key_map->isFunction(input, "Krak"))
+	else if (isFn(input, "Krak"))
 	{
 		if (player_obj->num( pickup::KrakGrenade ) < 1)
 		{
@@ -1145,7 +1217,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			return CommandResult( false, true );
 		}
 	}
-	else if (m_key_map->isFunction(input, "Stun"))
+	else if (isFn(input, "Stun"))
 	{
 		if (player_obj->num( pickup::StunGrenade ) < 1)
 		{
@@ -1160,7 +1232,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			return CommandResult( false, true );
 		}
 	}
-	else if (m_key_map->isFunction(input, "Inc"))
+	else if (isFn(input, "Inc"))
 	{
 		if (player_obj->num( pickup::IncGrenade ) < 1)
 		{
@@ -1175,7 +1247,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			return CommandResult( false, true );
 		}
 	}
-	else if (m_key_map->isFunction(input, "Demolition"))
+	else if (isFn(input, "Demolition"))
 	{
 		if (player_obj->num( pickup::DemoCharge ) < 1)
 		{
@@ -1188,18 +1260,16 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			m_activating_object = false;
 		}
 	}
-	//else if (m_key_map->isFunction(input, "Armour"))
+	//else if (isFn(input, "Armour"))
 	//{
 	//}
-	else if (m_key_map->isFunction(input, "Drop"))
+	else if (isFn(input, "Drop"))
 	{
-        shared_ptr< SelectDropItem > selector( new SelectDropItem(m_msgs, model, world, overworld, player_obj) );
-        DropDialog::ColourScheme scheme( model.isCountdownActive() ? DropDialog::Red : DropDialog::Green );
-        shared_ptr< DropDialog > dialog( new DropDialog( interfaceStateMachine(), m_key_map, selector, scheme ) );
-    	setNextState( dialog );
+        // RVIP: the drop prompt is the inventory list with a cursor (item keys drop as before)
+        setNextState( shared_ptr< InventoryMenu >( new InventoryMenu( interfaceStateMachine(), m_key_map, model.isCountdownActive(), true ) ) );
 		return CommandResult( false, true );
 	}
-	else if (m_key_map->isFunction(input, "Neutraliser"))
+	else if (isFn(input, "Neutraliser"))
 	{
 		if (player_obj->canUseItem(pickup::Neutraliser))
 		{
@@ -1218,7 +1288,7 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			m_msgs.addString("You don't have any neutraliser.");
 		}
 	}
-	else if (m_key_map->isFunction(input, "Medkit"))
+	else if (isFn(input, "Medkit"))
 	{
 		if (player_obj->canUseItem(pickup::Medkit))
 		{
@@ -1240,15 +1310,15 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			m_msgs.addString("You don't have a medkit.");
 		}
 	}
-	else if (m_key_map->isFunction(input, "ScrollDown"))
+	else if (isFn(input, "ScrollDown"))
 	{
 		m_msgs.scrollDown();
 	}
-	else if (m_key_map->isFunction(input, "ScrollUp"))
+	else if (isFn(input, "ScrollUp"))
 	{
 		m_msgs.scrollUp();
 	}
-	else if (m_key_map->isFunction(input, "Operate"))
+	else if (isFn(input, "Operate"))
 	{
 		//TODO move this block of code out.
 		bool found_terminal( false );
@@ -1318,20 +1388,20 @@ PlayingGame::CommandResult PlayingGame::interpretInput( const AUserInputItem& in
 			m_activating_object = true;
 		}
 	}
-	else if (m_key_map->isFunction(input, "Char"))
+	else if (isFn(input, "Char"))
 	{
 		shared_ptr< CharScreen > newstate( new CharScreen( interfaceStateMachine(), m_key_map ) );
 		setNextState( newstate );
 		return CommandResult( false, true );
 	}
 	else
-	if (m_key_map->isFunction(input, "Buy"))
+	if (isFn(input, "Buy"))
 	{
 		shared_ptr< BuyPerks > newstate( new BuyPerks( interfaceStateMachine(), m_key_map ) );
 		setNextState( newstate );
 		return CommandResult( false, true );
 	}
-	else if (m_key_map->isFunction(input, "Save"))
+	else if (isFn(input, "Save"))
 	{
 		if (saveGame(model, getSaveFileName(model)))
 		{
